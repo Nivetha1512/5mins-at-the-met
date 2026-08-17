@@ -1,0 +1,122 @@
+[
+  {
+    "id": "the-harvesters",
+    "title": "The Harvesters",
+    "artist": "Pieter Bruegel the Elder",
+    "year": "1565",
+    "imagePath": "/artworks/the-harvesters.jpg",
+    "credit": "Rogers Fund, 1919. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "This August scene is the only panel of Bruegel’s six-part seasons cycle in the United States. Peasants nap and picnic under a pear tree while the wheat is cut—labor and leisure in one sweep of gold.",
+    "metObjectId": 435809
+  },
+  {
+    "id": "madame-x",
+    "title": "Madame X (Virginie Amélie Avegno Gautreau)",
+    "artist": "John Singer Sargent",
+    "year": "1883–84",
+    "imagePath": "/artworks/madame-x.jpg",
+    "credit": "Arthur Hoppock Hearn Fund, 1916. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "The portrait caused a scandal at the 1884 Paris Salon because one jeweled strap originally slipped off Virginie Gautreau’s shoulder. Sargent later painted the strap in place, but the gossip still drove him from Paris to London.",
+    "metObjectId": 12127
+  },
+  {
+    "id": "death-of-socrates",
+    "title": "The Death of Socrates",
+    "artist": "Jacques Louis David",
+    "year": "1787",
+    "imagePath": "/artworks/death-of-socrates.jpg",
+    "credit": "Catharine Lorillard Wolfe Collection, Wolfe Fund, 1931. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Socrates calmly reaches for the hemlock while his students unravel around him. David idealized the philosopher like a classical statue—Neoclassical propaganda for reason over fear, painted two years before the French Revolution.",
+    "metObjectId": 436105
+  },
+  {
+    "id": "the-dance-class",
+    "title": "The Dance Class",
+    "artist": "Edgar Degas",
+    "year": "1874",
+    "imagePath": "/artworks/the-dance-class.jpg",
+    "credit": "Bequest of Mrs. Harry Payne Bingham, 1986. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Degas packed twenty-four figures into a rehearsal, with ballet master Jules Perrot leaning on his stick. Dancers fidget, scratch, and wait rather than pose on stage—a snapshot composition that felt radical in 1874.",
+    "metObjectId": 438817
+  },
+  {
+    "id": "wheat-field-with-cypresses",
+    "title": "Wheat Field with Cypresses",
+    "artist": "Vincent van Gogh",
+    "year": "1889",
+    "imagePath": "/artworks/wheat-field-with-cypresses.jpg",
+    "credit": "Purchase, The Annenberg Foundation Gift, 1993. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Van Gogh painted this view from the asylum at Saint-Rémy, calling cypresses “beautiful as an Egyptian obelisk.” The Met’s canvas is the most finished of three versions he made of the same swirling landscape.",
+    "metObjectId": 436535
+  },
+  {
+    "id": "young-woman-with-a-water-pitcher",
+    "title": "Young Woman with a Water Pitcher",
+    "artist": "Johannes Vermeer",
+    "year": "ca. 1662",
+    "imagePath": "/artworks/young-woman-with-a-water-pitcher.jpg",
+    "credit": "Marquand Collection, Gift of Henry G. Marquand, 1889. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "This was the first Vermeer to enter an American collection, in 1887. A wall map and a cascade of white linen turn an everyday chore into a quiet monument of Delft light.",
+    "metObjectId": 437881
+  },
+  {
+    "id": "cypresses",
+    "title": "Cypresses",
+    "artist": "Vincent van Gogh",
+    "year": "1889",
+    "imagePath": "/artworks/cypresses.jpg",
+    "credit": "Rogers Fund, 1949. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Painted in June 1889, weeks after van Gogh admitted himself to Saint-Rémy. He wrote to Theo that the trees were “always occupying my thoughts,” their flame-like forms twisting against a Provençal sky.",
+    "metObjectId": 437980
+  },
+  {
+    "id": "irises",
+    "title": "Irises",
+    "artist": "Vincent van Gogh",
+    "year": "1890",
+    "imagePath": "/artworks/irises.jpg",
+    "credit": "Gift of Adele R. Levy, 1958. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "One of van Gogh’s last paintings, made the week before he left the asylum in May 1890. There is no vase and no table—just a cropped surge of violet and green, like living wallpaper.",
+    "metObjectId": 436528
+  },
+  {
+    "id": "boating",
+    "title": "Boating",
+    "artist": "Edouard Manet",
+    "year": "1874",
+    "imagePath": "/artworks/boating.jpg",
+    "credit": "H. O. Havemeyer Collection, Bequest of Mrs. H. O. Havemeyer, 1929. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Manet painted this on the water at Argenteuil, with his brother-in-law at the oars. The high horizon and flattened blue were so modern that a critic joked the pair might fall out of the picture into the river.",
+    "metObjectId": 436947
+  },
+  {
+    "id": "aristotle-with-a-bust-of-homer",
+    "title": "Aristotle with a Bust of Homer",
+    "artist": "Rembrandt (Rembrandt van Rijn)",
+    "year": "1653",
+    "imagePath": "/artworks/aristotle-with-a-bust-of-homer.jpg",
+    "credit": "Purchase, special contributions and funds given or bequeathed by friends of the Museum, 1961. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Aristotle’s gold-chained hand rests on Homer’s marble head: living fame touching blind, immortal poetry. The Met bought it in 1961 for a then-record $2.3 million.",
+    "metObjectId": 437394
+  },
+  {
+    "id": "the-horse-fair",
+    "title": "The Horse Fair",
+    "artist": "Rosa Bonheur",
+    "year": "1852–55",
+    "imagePath": "/artworks/the-horse-fair.jpg",
+    "credit": "Gift of Cornelius Vanderbilt, 1887. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Bonheur sketched twice a week at the Paris horse market, often in men’s clothes so she could move freely through the crowds. The canvas is more than sixteen feet wide—one of the largest animal paintings of the nineteenth century.",
+    "metObjectId": 435702
+  },
+  {
+    "id": "washington-crossing-the-delaware",
+    "title": "Washington Crossing the Delaware",
+    "artist": "Emanuel Leutze",
+    "year": "1851",
+    "imagePath": "/artworks/washington-crossing-the-delaware.jpg",
+    "credit": "Gift of John Stewart Kennedy, 1897. The Metropolitan Museum of Art, Open Access (CC0)",
+    "description": "Leutze painted this theatrical dawn in Germany, using the Rhine as a stand-in for the icy Delaware. The stars-and-stripes flag is anachronistic—that design came later—but the image became an American icon anyway.",
+    "metObjectId": 11417
+  }
+]
