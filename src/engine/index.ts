@@ -1,2 +1,10 @@
-/** Agent 2: export the pomodoro engine from this barrel. */
-export {};
+export {
+  PomodoroEngine,
+  DEFAULT_TIMER_CONFIG,
+  CONFIG_STORAGE_KEY,
+} from "./pomodoro";
+export type {
+  PomodoroEngineOptions,
+  EngineClock,
+  StorageLike,
+} from "./pomodoro";
