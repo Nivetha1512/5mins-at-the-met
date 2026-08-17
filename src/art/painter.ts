@@ -6,19 +6,20 @@ type DestRect = { x: number; y: number; w: number; h: number };
 
 type Scatter = { dx: number; dy: number; spin: number };
 
-/** How long a landed stroke stays wet flat colour before it dries into the artwork. */
-const DRY_TAU_MS = 2400;
+type ActiveStroke = { index: number; t: number };
 
 /** Mask nibs run wider than the visible paint so neighbouring strokes overlap. */
 const MASK_NIB_SCALE = 1.7;
 
 /** Progress at which the artwork starts bleeding through the gaps strokes missed. */
-const GAP_FILL_START = 0.65;
+const GAP_FILL_START = 0.92;
+
+/** Time to draw one stroke path from 0→1. */
+const STROKE_DRAW_MS = 320;
 
 /**
- * Canvas 2D painter. Each construct stroke stamps into a mask that reveals that
- * patch of the real artwork: paint lands wet in flat colour, then dries into
- * image detail, so the painting builds up under the brush instead of appearing.
+ * Canvas 2D painter. Construct expands a radial frontier from the center;
+ * each stroke animates along its path while the mask reveals the real artwork.
  */
 export class ArtPainter {
   private readonly canvas: HTMLCanvasElement;
@@ -27,6 +28,10 @@ export class ArtPainter {
   private raf = 0;
   private artworkId: string | null = null;
   private strokes: Stroke[] = [];
+  private strokeDistances: number[] = [];
+  private maxStrokeDist = 1;
+  private activeStrokes: ActiveStroke[] = [];
+  private finalizedStrokeIndices = new Set<number>();
   private aspect = 1;
   private image: HTMLImageElement | null = null;
   private scatter: Scatter[] = [];
@@ -36,15 +41,11 @@ export class ArtPainter {
   /** Accumulated stroke coverage; alpha only. */
   private maskCanvas: HTMLCanvasElement | null = null;
   private maskCtx: CanvasRenderingContext2D | null = null;
-  /** Freshly landed paint in flat colour, faded out as it dries. */
-  private wetCanvas: HTMLCanvasElement | null = null;
-  private wetCtx: CanvasRenderingContext2D | null = null;
   /** Scratch layer: source image clipped to the mask. */
   private revealCanvas: HTMLCanvasElement | null = null;
   private revealCtx: CanvasRenderingContext2D | null = null;
   private layerPixelW = 0;
   private layerPixelH = 0;
-  private placed = 0;
 
   constructor(canvas: HTMLCanvasElement) {
     const ctx = canvas.getContext("2d");
@@ -72,6 +73,8 @@ export class ArtPainter {
     this.aspect = set.aspect;
     this.image = set.image;
     this.scatter = [];
+    this.computeStrokeDistances();
+    this.resetConstructState();
     this.resetLayers();
     if (runId !== this.runId) {
       if (this.wantsCompleted) this.drawCompleted();
@@ -113,10 +116,12 @@ export class ArtPainter {
       this.raf = 0;
     }
     this.strokes = [];
+    this.strokeDistances = [];
     this.scatter = [];
     this.artworkId = null;
     this.image = null;
     this.wantsCompleted = false;
+    this.resetConstructState();
     this.resetLayers();
     this.fitCanvas();
     this.ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -214,48 +219,44 @@ export class ArtPainter {
     }
     const dest = this.destRect();
     const resized = this.ensureLayers();
-    if (resized) this.placed = 0;
+    if (resized) this.resetConstructState();
 
-    const target = Math.floor(this.strokes.length * progress);
-    for (let i = this.placed; i < target; i++) {
-      this.landStroke(this.strokes[i], dest, resized);
+    const frontier = easeOutCubic(progress) * this.maxStrokeDist;
+    this.enqueueEligibleStrokes(frontier);
+
+    const maskCtx = this.maskCtx;
+    if (maskCtx) {
+      for (const active of this.activeStrokes) {
+        active.t = Math.min(1, active.t + dtMs / STROKE_DRAW_MS);
+        stampPartialMask(maskCtx, this.strokes[active.index], dest, active.t);
+      }
     }
-    this.placed = target;
 
-    this.dryPaint(dtMs);
+    this.activeStrokes = this.activeStrokes.filter((active) => {
+      if (active.t >= 1) {
+        this.finalizedStrokeIndices.add(active.index);
+        return false;
+      }
+      return true;
+    });
+
     this.compose(dest, progress);
   }
 
-  /**
-   * Stamp one stroke into the reveal mask, and (unless we are only rebuilding a
-   * resized mask) lay the same shape as wet flat colour on top.
-   */
-  private landStroke(stroke: Stroke, dest: DestRect, maskOnly: boolean): void {
-    if (this.maskCtx) {
-      this.stampMask(this.maskCtx, stroke, dest);
-    }
-    if (!maskOnly && this.wetCtx) {
-      this.paintStrokeOn(this.wetCtx, stroke, dest, 1, 0, 0, 1);
+  private enqueueEligibleStrokes(frontier: number): void {
+    const activeIndices = new Set(this.activeStrokes.map((s) => s.index));
+    for (let i = 0; i < this.strokes.length; i++) {
+      if (this.finalizedStrokeIndices.has(i) || activeIndices.has(i)) continue;
+      if (this.strokeDistances[i] <= frontier) {
+        this.activeStrokes.push({ index: i, t: 0 });
+        activeIndices.add(i);
+      }
     }
   }
 
-  /** Fade the wet layer toward transparent so dried strokes hand over to the image. */
-  private dryPaint(dtMs: number): void {
-    const ctx = this.wetCtx;
-    if (!ctx || dtMs <= 0) return;
-    ctx.save();
-    ctx.globalCompositeOperation = "destination-out";
-    ctx.globalAlpha = 1 - Math.exp(-dtMs / DRY_TAU_MS);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(0, 0, this.cssWidth, this.cssHeight);
-    ctx.restore();
-  }
-
-  /** Backdrop, then artwork clipped to painted area, then the wet paint on top. */
+  /** Backdrop, then artwork clipped to the growing mask, with late gap-fill. */
   private compose(dest: DestRect, progress: number): void {
     this.fillBackdrop();
-    // Strokes never tile to full coverage; this only shows through the slivers
-    // they miss, so break-complete lands on the artwork without a visible pop.
     this.drawSourceImage(gapFillAlpha(progress));
     const reveal = this.revealCtx;
     if (this.image && reveal && this.maskCanvas && this.revealCanvas) {
@@ -269,9 +270,6 @@ export class ArtPainter {
       reveal.drawImage(this.maskCanvas, 0, 0, this.cssWidth, this.cssHeight);
       reveal.restore();
       this.ctx.drawImage(this.revealCanvas, 0, 0, this.cssWidth, this.cssHeight);
-    }
-    if (this.wetCanvas) {
-      this.ctx.drawImage(this.wetCanvas, 0, 0, this.cssWidth, this.cssHeight);
     }
   }
 
@@ -295,40 +293,31 @@ export class ArtPainter {
       return [canvas, ctx];
     };
     [this.maskCanvas, this.maskCtx] = make();
-    [this.wetCanvas, this.wetCtx] = make();
     [this.revealCanvas, this.revealCtx] = make();
     return true;
   }
 
   private resetLayers(): void {
-    this.placed = 0;
     this.maskCanvas = null;
     this.maskCtx = null;
-    this.wetCanvas = null;
-    this.wetCtx = null;
     this.revealCanvas = null;
     this.revealCtx = null;
     this.layerPixelW = 0;
     this.layerPixelH = 0;
   }
 
-  /** Opaque nib, run wide, so overlapping strokes open up a continuous window on the image. */
-  private stampMask(ctx: CanvasRenderingContext2D, stroke: Stroke, dest: DestRect): void {
-    const geom = strokeGeometry(stroke, dest);
-    ctx.save();
-    ctx.translate(dest.x + stroke.x * dest.w, dest.y + stroke.y * dest.h);
-    ctx.rotate(stroke.angle);
-    const path = brushPath(geom.length * 1.08, stroke.curve, stroke.wobble);
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = "#fff";
-    fillBrushNib(ctx, path, geom.width * MASK_NIB_SCALE, stroke.pressure);
-    // Round-capped spine so the tapered tips do not leave black slivers between strokes.
-    ctx.strokeStyle = "#fff";
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.lineWidth = geom.width * 0.9;
-    strokeBrushSpine(ctx, path);
-    ctx.restore();
+  private resetConstructState(): void {
+    this.activeStrokes = [];
+    this.finalizedStrokeIndices = new Set();
+  }
+
+  private computeStrokeDistances(): void {
+    this.strokeDistances = this.strokes.map((stroke) => {
+      const dx = stroke.x - 0.5;
+      const dy = stroke.y - 0.5;
+      return Math.hypot(dx, dy);
+    });
+    this.maxStrokeDist = Math.max(...this.strokeDistances, 0.001);
   }
 
   private drawDissolve(progress: number): void {
@@ -525,6 +514,36 @@ function strokeBrushSpine(ctx: CanvasRenderingContext2D, path: PathSample[]): vo
   ctx.stroke();
 }
 
+/** Opaque nib along the first `t` fraction of the path, widening for mask overlap. */
+function stampPartialMask(
+  ctx: CanvasRenderingContext2D,
+  stroke: Stroke,
+  dest: DestRect,
+  t: number,
+): void {
+  const clampedT = Math.max(0, Math.min(1, t));
+  if (clampedT <= 0) return;
+
+  const geom = strokeGeometry(stroke, dest);
+  ctx.save();
+  ctx.translate(dest.x + stroke.x * dest.w, dest.y + stroke.y * dest.h);
+  ctx.rotate(stroke.angle);
+  const path = brushPath(geom.length * 1.08, stroke.curve, stroke.wobble);
+  const last = path.length - 1;
+  const endIdx = Math.max(1, Math.ceil(clampedT * last));
+  const partialPath = path.slice(0, endIdx + 1);
+
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#fff";
+  fillBrushNib(ctx, partialPath, geom.width * MASK_NIB_SCALE, stroke.pressure);
+  ctx.strokeStyle = "#fff";
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = geom.width * 0.9;
+  strokeBrushSpine(ctx, partialPath);
+  ctx.restore();
+}
+
 function shiftHex(hex: string, amount: number): string {
   const n = parseInt(hex.slice(1), 16);
   const shift = (v: number) => Math.max(0, Math.min(255, v + amount));
@@ -538,6 +557,10 @@ function gapFillAlpha(progress: number): number {
   if (progress <= GAP_FILL_START) return 0;
   const t = (progress - GAP_FILL_START) / (1 - GAP_FILL_START);
   return t * t * (3 - 2 * t);
+}
+
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
 }
 
 /** Shared nib sizing so the mask and the visible paint stay in step. */

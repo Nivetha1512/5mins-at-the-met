@@ -199,6 +199,43 @@
   outline-offset: 3px;
 }
 
+.ui-break-timer {
+  position: absolute;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.2rem;
+  padding: 0.55rem 0.85rem;
+  background: rgba(10, 9, 8, 0.72);
+  color: #f0ece4;
+  border-radius: 2px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, serif;
+  pointer-events: none;
+}
+
+.ui-break-timer__label {
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.58rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #b8b2a6;
+}
+
+.ui-break-timer__time {
+  font-size: 1.35rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+
 .ui-break {
   position: absolute;
   inset: 0;

@@ -209,8 +209,13 @@ export class PomodoroEngine {
   }
 
   start(): void {
-    if (this.phase === "idle" || this.phase === "breakComplete") {
-      this.enter(nextPhase(this.phase));
+    if (this.phase === "idle") {
+      this.enter("studying");
+      return;
+    }
+    if (this.phase === "breakComplete") {
+      // Skip the dissolve overlay — go straight to the compact study chip.
+      this.enter("studying");
     }
   }
 

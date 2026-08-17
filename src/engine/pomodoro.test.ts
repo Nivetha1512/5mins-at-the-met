@@ -108,7 +108,7 @@ function createEngine(
 }
 
 describe("PomodoroEngine", () => {
-  it("runs study → break → breakComplete → dissolving (30s) → studying", () => {
+  it("runs study → break → breakComplete → studying on start next session", () => {
     const { clock, advance } = createFakeClock();
     const { engine, phases } = createEngine(
       { studySeconds: 60, breakSeconds: 60 },
@@ -133,28 +133,19 @@ describe("PomodoroEngine", () => {
     expect(engine.snapshot().remainingMs).toBe(0);
 
     engine.start();
-    expect(engine.getPhase()).toBe("dissolving");
-    expect(engine.snapshot()).toMatchObject({
-      remainingMs: DISSOLVE_MS,
-      totalMs: DISSOLVE_MS,
-    });
-
-    advance(DISSOLVE_MS - 1);
-    expect(engine.getPhase()).toBe("dissolving");
-
-    advance(1);
     expect(engine.getPhase()).toBe("studying");
-    expect(engine.snapshot().totalMs).toBe(60_000);
+    expect(engine.snapshot()).toMatchObject({
+      remainingMs: 60_000,
+      totalMs: 60_000,
+    });
 
     expect(phases.map((p) => `${p.from}->${p.to}`)).toEqual([
       "idle->studying",
       "studying->break",
       "break->breakComplete",
-      "breakComplete->dissolving",
-      "dissolving->studying",
+      "breakComplete->studying",
     ]);
     expect(phases[1]?.artworkId).toBe("met-123");
-    expect(phases[3]?.artworkId).toBe("met-123");
   });
 
   it("pause/resume does not skip time incorrectly", () => {
@@ -296,7 +287,7 @@ describe("PomodoroEngine", () => {
     expect(phases[phases.length - 1]).toMatchObject({ from: "dissolving", to: "studying" });
   });
 
-  it("start from breakComplete begins dissolving", () => {
+  it("start from breakComplete enters studying (skips dissolve)", () => {
     const { clock } = createFakeClock();
     const { engine } = createEngine({ studySeconds: 60, breakSeconds: 60 }, { clock });
 
@@ -304,8 +295,8 @@ describe("PomodoroEngine", () => {
     engine.skip(); // break
     engine.skip(); // breakComplete
     engine.start();
-    expect(engine.getPhase()).toBe("dissolving");
-    expect(engine.snapshot().totalMs).toBe(DISSOLVE_MS);
+    expect(engine.getPhase()).toBe("studying");
+    expect(engine.snapshot().totalMs).toBe(60_000);
   });
 
   it("uses custom study and break durations", () => {
