@@ -42,7 +42,7 @@ type Layer = {
 };
 
 const LAYERS: Layer[] = [
-  { step: 28, radiusScale: 0.72, jitter: 0.22 },
+  { step: 18, radiusScale: 0.72, jitter: 0.22 },
   { step: 14, radiusScale: 0.7, jitter: 0.28 },
   { step: 7, radiusScale: 0.68, jitter: 0.32, residual: true },
   { step: 4, radiusScale: 0.62, jitter: 0.35, edges: true },
@@ -101,36 +101,86 @@ async function buildStrokes(imagePath: string): Promise<StrokeSet> {
   const detail: Stroke[] = [];
 
   for (const layer of LAYERS) {
+    const visited = new Uint8Array(sampleW * sampleH);
+    const canChain = !layer.edges && !layer.residual;
+
     for (let cy = layer.step / 2; cy < sampleH; cy += layer.step) {
       for (let cx = layer.step / 2; cx < sampleW; cx += layer.step) {
-        const cellX0 = Math.max(0, Math.floor(cx - layer.step / 2));
-        const cellY0 = Math.max(0, Math.floor(cy - layer.step / 2));
-        const cellX1 = Math.min(sampleW, Math.ceil(cx + layer.step / 2));
-        const cellY1 = Math.min(sampleH, Math.ceil(cy + layer.step / 2));
-        const [r, g, b] = averageCell(pixels, sampleW, cellX0, cellY0, cellX1, cellY1);
+        const anchorX = Math.round(cx);
+        const anchorY = Math.round(cy);
+        const anchorKey = anchorY * sampleW + anchorX;
+        if (visited[anchorKey]) continue;
 
-        if (layer.residual) {
-          const [cr, cg, cb] = sampleCoarse(coarseColor, sampleW, sampleH, cx, cy);
-          if (colorDist(r, g, b, cr, cg, cb) < 28) continue;
+        const orient = localOrientation(pixels, sampleW, sampleH, cx, cy);
+        const chainSteps =
+          canChain && rand() < 0.38 ? 2 + Math.floor(rand() * 3) : 1;
+
+        let sumCx = 0;
+        let sumCy = 0;
+        let sumR = 0;
+        let sumG = 0;
+        let sumB = 0;
+        let count = 0;
+
+        for (let s = 0; s < chainSteps; s++) {
+          const px = cx + s * Math.cos(orient.angle) * layer.step * 0.88;
+          const py = cy + s * Math.sin(orient.angle) * layer.step * 0.88;
+          const ix = Math.round(px);
+          const iy = Math.round(py);
+          if (ix < 0 || iy < 0 || ix >= sampleW || iy >= sampleH) break;
+
+          const key = iy * sampleW + ix;
+          if (visited[key]) break;
+
+          const cellX0 = Math.max(0, Math.floor(px - layer.step / 2));
+          const cellY0 = Math.max(0, Math.floor(py - layer.step / 2));
+          const cellX1 = Math.min(sampleW, Math.ceil(px + layer.step / 2));
+          const cellY1 = Math.min(sampleH, Math.ceil(py + layer.step / 2));
+          const [r, g, b] = averageCell(pixels, sampleW, cellX0, cellY0, cellX1, cellY1);
+
+          if (layer.residual) {
+            const [cr, cg, cb] = sampleCoarse(coarseColor, sampleW, sampleH, px, py);
+            if (colorDist(r, g, b, cr, cg, cb) < 28) continue;
+          }
+
+          if (layer.edges && localContrast(pixels, sampleW, sampleH, px, py) < 22) {
+            continue;
+          }
+
+          visited[key] = 1;
+          sumCx += px;
+          sumCy += py;
+          sumR += r;
+          sumG += g;
+          sumB += b;
+          count++;
         }
 
-        if (layer.edges && localContrast(pixels, sampleW, sampleH, cx, cy) < 22) {
-          continue;
-        }
+        if (count === 0) continue;
+
+        const avgCx = sumCx / count;
+        const avgCy = sumCy / count;
+        const r = sumR / count;
+        const g = sumG / count;
+        const b = sumB / count;
 
         const jx = (rand() - 0.5) * layer.jitter * layer.step;
         const jy = (rand() - 0.5) * layer.jitter * layer.step;
-        const x = clamp01((cx + jx) / sampleW);
-        const y = clamp01((cy + jy) / sampleH);
+        const x = clamp01((avgCx + jx) / sampleW);
+        const y = clamp01((avgCy + jy) / sampleH);
         const radius = ((layer.step * layer.radiusScale) / minDim) * (0.9 + rand() * 0.2);
-        const width = radius * (0.52 + rand() * 0.28);
-        const length = width * (layer.edges ? 2.5 + rand() * 2.2 : 2.15 + rand() * 2.55);
-        const orient = localOrientation(pixels, sampleW, sampleH, cx, cy);
+        const width = radius * (0.36 + rand() * 0.2);
+        const lengthScale = layer.edges ? 3.4 + rand() * 2.6 : 3.1 + rand() * 3.2;
+        const length = width * lengthScale * (1 + (count - 1) * 0.55);
         const radial = Math.atan2(y - 0.5, x - 0.5);
+        const tangent = radial + Math.PI / 2;
+        const isEarlyLayer = !layer.edges && !layer.residual;
         const angle =
           orient.mag > 18
             ? orient.angle + (rand() - 0.5) * 0.28
-            : radial + (rand() - 0.5) * 0.55;
+            : isEarlyLayer
+              ? tangent + (rand() - 0.5) * 0.38
+              : radial + (rand() - 0.5) * 0.55;
 
         const stroke: Stroke = {
           x,
@@ -140,7 +190,7 @@ async function buildStrokes(imagePath: string): Promise<StrokeSet> {
           length,
           width,
           angle,
-          alpha: layer.edges ? 0.48 + rand() * 0.32 : 0.55 + rand() * 0.3,
+          alpha: layer.edges ? 0.3 + rand() * 0.22 : 0.34 + rand() * 0.2,
           curve: (rand() - 0.5) * 0.34,
           wobble: (rand() - 0.5) * 0.26,
           pressure: 0.32 + rand() * 0.36,
@@ -154,7 +204,7 @@ async function buildStrokes(imagePath: string): Promise<StrokeSet> {
         }
 
         if (!layer.edges) {
-          stampCoarse(coarseColor, sampleW, sampleH, cx, cy, layer.step, r, g, b);
+          stampCoarse(coarseColor, sampleW, sampleH, avgCx, avgCy, layer.step, r, g, b);
         }
       }
     }

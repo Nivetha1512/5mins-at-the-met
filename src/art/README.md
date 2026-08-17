@@ -1,6 +1,6 @@
 # `src/art/` — catalog + stroke painter
 
-Bundled [Met Open Access](https://metmuseum.github.io/) paintings. Images live in `public/artworks/` and are **never** fetched from The Met at runtime.
+Bundled [Met Open Access](https://metmuseum.github.io/) paintings. Metadata comes from [metmuseum/openaccess](https://github.com/metmuseum/openaccess); images live in `public/artworks/` and are **never** fetched at runtime. Refresh with `npm run fetch-artworks:catalog`.
 
 Famous Monet *Water Lilies* holdings at The Met are **not** Open Access (`isPublicDomain: false`, often Havemeyer / Annenberg). This catalog uses other confirmed CC0 paintings (van Gogh, Vermeer, Bruegel, Sargent, Degas, David, Manet, Rembrandt, Bonheur, Leutze).
 

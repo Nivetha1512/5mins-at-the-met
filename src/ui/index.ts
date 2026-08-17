@@ -10,6 +10,12 @@ export type { BreakCompleteProps } from "./BreakComplete";
 export { BackToWork } from "./BackToWork";
 export type { BackToWorkProps } from "./BackToWork";
 
+export { BreakTimer } from "./BreakTimer";
+export type { BreakTimerProps } from "./BreakTimer";
+
+export { ExitButton } from "./ExitButton";
+export type { ExitButtonProps } from "./ExitButton";
+
 export { useTimerHotkeys } from "./useTimerHotkeys";
 export type { TimerHotkeys } from "./useTimerHotkeys";
 
