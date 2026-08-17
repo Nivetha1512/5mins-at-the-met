@@ -8,6 +8,8 @@
     "opener:default",
     "core:window:allow-set-size",
     "core:window:allow-set-position",
+    "core:window:allow-center",
+    "core:window:allow-close",
     "core:window:allow-set-fullscreen",
     "core:window:allow-set-simple-fullscreen",
     "core:window:allow-set-ignore-cursor-events",

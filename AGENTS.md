@@ -57,7 +57,7 @@ Credit line example: `"The Metropolitan Museum of Art, Open Access (CC0)"` plus 
 ## Shared contract (do not drift)
 
 - `PomodoroPhase`: `idle \| studying \| break \| breakComplete \| dissolving`
-- `TimerConfig`: `{ studyMinutes, breakMinutes }`
+- `TimerConfig`: `{ studySeconds, breakSeconds }` (whole seconds, so sub-minute phases are representable; legacy persisted `{ studyMinutes, breakMinutes }` is migrated on load)
 - `DISSOLVE_MS = 30_000`
 - `Artwork`: `{ id, title, artist, year, imagePath, credit, description, metObjectId? }`
 - `PainterCommand`: `{ type: "construct" \| "dissolve" \| "clear", artworkId, durationMs }`

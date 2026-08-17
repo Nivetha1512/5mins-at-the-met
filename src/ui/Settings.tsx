@@ -1,9 +1,19 @@
+import { useEffect, useState, type FocusEvent } from "react";
 import type { TimerConfig } from "../shared";
+import {
+  MAX_BREAK_SECONDS,
+  MAX_STUDY_SECONDS,
+  normalizeDuration,
+  parseDurationText,
+  sanitizeDigits,
+  toDurationText,
+  type DurationText,
+} from "./durationInput";
 import "./ui.css";
 
 export const DEFAULT_TIMER_CONFIG: TimerConfig = {
-  studyMinutes: 25,
-  breakMinutes: 5,
+  studySeconds: 25 * 60,
+  breakSeconds: 5 * 60,
 };
 
 export type SettingsProps = {
@@ -12,62 +22,128 @@ export type SettingsProps = {
   onStart: () => void;
 };
 
-const MIN_MINUTES = 1;
-const MAX_STUDY_MINUTES = 180;
-const MAX_BREAK_MINUTES = 60;
+type DurationFieldProps = {
+  labelId: string;
+  label: string;
+  value: DurationText;
+  onValueChange: (next: DurationText) => void;
+  onCommit: () => void;
+};
 
-function clampMinutes(value: number, max: number): number {
-  return Math.min(max, Math.max(MIN_MINUTES, Math.round(value)));
+/**
+ * One MM / SS pair. Text is held by the parent so it can stay empty or partially
+ * typed; `onCommit` fires when focus leaves the pair entirely, not when moving
+ * between the two halves.
+ */
+function DurationField({ labelId, label, value, onValueChange, onCommit }: DurationFieldProps) {
+  function handleBlur(event: FocusEvent<HTMLDivElement>) {
+    if (event.currentTarget.contains(event.relatedTarget)) {
+      return;
+    }
+    onCommit();
+  }
+
+  return (
+    <div className="ui-settings__field" role="group" aria-labelledby={labelId}>
+      <span className="ui-settings__label" id={labelId}>
+        {label}
+      </span>
+      <div className="ui-settings__duration" onBlur={handleBlur}>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label={`${label} minutes`}
+          value={value.minutes}
+          onChange={(event) =>
+            onValueChange({ ...value, minutes: sanitizeDigits(event.target.value) })
+          }
+        />
+        <span className="ui-settings__colon" aria-hidden="true">
+          :
+        </span>
+        <input
+          type="text"
+          inputMode="numeric"
+          autoComplete="off"
+          aria-label={`${label} seconds`}
+          value={value.seconds}
+          onChange={(event) =>
+            onValueChange({ ...value, seconds: sanitizeDigits(event.target.value, 2) })
+          }
+        />
+      </div>
+      <span className="ui-settings__unit">min : sec</span>
+    </div>
+  );
 }
 
 export function Settings({ config, onChange, onStart }: SettingsProps) {
-  const canStart = config.studyMinutes >= MIN_MINUTES && config.breakMinutes >= MIN_MINUTES;
+  const [study, setStudy] = useState<DurationText>(() => toDurationText(config.studySeconds));
+  const [rest, setRest] = useState<DurationText>(() => toDurationText(config.breakSeconds));
 
-  function setStudyMinutes(raw: number) {
-    if (Number.isNaN(raw)) {
-      return;
-    }
-    onChange({ ...config, studyMinutes: clampMinutes(raw, MAX_STUDY_MINUTES) });
+  // Re-seed the text only when the committed config moves, so an empty or
+  // half-typed field survives re-renders.
+  useEffect(() => {
+    setStudy(toDurationText(config.studySeconds));
+  }, [config.studySeconds]);
+
+  useEffect(() => {
+    setRest(toDurationText(config.breakSeconds));
+  }, [config.breakSeconds]);
+
+  const canStart = parseDurationText(study) !== null && parseDurationText(rest) !== null;
+
+  function commitStudy(): number {
+    const next = normalizeDuration(study, MAX_STUDY_SECONDS, config.studySeconds);
+    setStudy(toDurationText(next));
+    return next;
   }
 
-  function setBreakMinutes(raw: number) {
-    if (Number.isNaN(raw)) {
-      return;
+  function commitBreak(): number {
+    const next = normalizeDuration(rest, MAX_BREAK_SECONDS, config.breakSeconds);
+    setRest(toDurationText(next));
+    return next;
+  }
+
+  function handleStart() {
+    const studySeconds = commitStudy();
+    const breakSeconds = commitBreak();
+    if (studySeconds !== config.studySeconds || breakSeconds !== config.breakSeconds) {
+      onChange({ studySeconds, breakSeconds });
     }
-    onChange({ ...config, breakMinutes: clampMinutes(raw, MAX_BREAK_MINUTES) });
+    onStart();
   }
 
   return (
     <section className="ui-settings" aria-label="Session length">
       <div className="ui-settings__fields">
-        <div className="ui-settings__field">
-          <label htmlFor="ui-study-minutes">Study</label>
-          <input
-            id="ui-study-minutes"
-            type="number"
-            inputMode="numeric"
-            min={MIN_MINUTES}
-            max={MAX_STUDY_MINUTES}
-            value={config.studyMinutes}
-            onChange={(event) => setStudyMinutes(event.target.valueAsNumber)}
-          />
-          <span className="ui-settings__unit">minutes</span>
-        </div>
-        <div className="ui-settings__field">
-          <label htmlFor="ui-break-minutes">Break</label>
-          <input
-            id="ui-break-minutes"
-            type="number"
-            inputMode="numeric"
-            min={MIN_MINUTES}
-            max={MAX_BREAK_MINUTES}
-            value={config.breakMinutes}
-            onChange={(event) => setBreakMinutes(event.target.valueAsNumber)}
-          />
-          <span className="ui-settings__unit">minutes</span>
-        </div>
+        <DurationField
+          labelId="ui-study-label"
+          label="Study"
+          value={study}
+          onValueChange={setStudy}
+          onCommit={() => {
+            const studySeconds = commitStudy();
+            if (studySeconds !== config.studySeconds) {
+              onChange({ ...config, studySeconds });
+            }
+          }}
+        />
+        <DurationField
+          labelId="ui-break-label"
+          label="Break"
+          value={rest}
+          onValueChange={setRest}
+          onCommit={() => {
+            const breakSeconds = commitBreak();
+            if (breakSeconds !== config.breakSeconds) {
+              onChange({ ...config, breakSeconds });
+            }
+          }}
+        />
       </div>
-      <button type="button" className="ui-btn" onClick={onStart} disabled={!canStart}>
+      <button type="button" className="ui-btn" onClick={handleStart} disabled={!canStart}>
         Start
       </button>
     </section>

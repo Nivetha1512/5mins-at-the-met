@@ -2,9 +2,9 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArtPainter, getArtwork, getCatalog, nextArtwork } from "../art";
 import { DEFAULT_TIMER_CONFIG, PomodoroEngine } from "../engine";
 import type { Artwork, PomodoroPhase, TimerConfig } from "../shared";
-import { BreakComplete, Settings, StudyChip, useTimerHotkeys } from "../ui";
+import { BackToWork, BreakComplete, Settings, StudyChip, useTimerHotkeys } from "../ui";
 import "./App.css";
-import { setWindowMode, type WindowMode } from "./windowBridge";
+import { closeOverlay, setWindowMode, type WindowMode } from "./windowBridge";
 
 const CANVAS_PHASES: ReadonlySet<PomodoroPhase> = new Set([
   "break",
@@ -30,8 +30,7 @@ function drivePainter(
   phase: PomodoroPhase,
   artworkId: string | undefined,
   painter: ArtPainter,
-  breakMinutes: number,
-  skipped: boolean,
+  breakDurationMs: number,
 ): void {
   switch (phase) {
     case "idle":
@@ -40,13 +39,11 @@ function drivePainter(
       return;
     case "break":
       if (artworkId) {
-        void painter.construct(artworkId, breakMinutes * 60_000);
+        void painter.construct(artworkId, breakDurationMs);
       }
       return;
     case "breakComplete":
-      if (skipped) {
-        painter.hold();
-      }
+      painter.hold();
       return;
     case "dissolving":
       void painter.dissolve();
@@ -58,7 +55,6 @@ function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<PomodoroEngine | null>(null);
   const lastArtworkIdRef = useRef<string | undefined>(undefined);
-  const skipRef = useRef(false);
 
   const [config, setConfig] = useState<TimerConfig>(DEFAULT_TIMER_CONFIG);
   const [phase, setPhase] = useState<PomodoroPhase>("idle");
@@ -83,8 +79,6 @@ function App() {
           setPaused(engine.isPaused());
         },
         onPhaseChange: (payload) => {
-          const skipped = skipRef.current;
-          skipRef.current = false;
           setPhase(payload.to);
           if (payload.to === "break" && payload.artworkId) {
             lastArtworkIdRef.current = payload.artworkId;
@@ -95,8 +89,7 @@ function App() {
             payload.to,
             payload.artworkId,
             painter,
-            engine.getConfig().breakMinutes,
-            skipped,
+            engine.getConfig().breakSeconds * 1_000,
           );
         },
       },
@@ -133,8 +126,19 @@ function App() {
   }, []);
 
   const handleSkip = useCallback(() => {
-    skipRef.current = true;
     engineRef.current?.skip();
+  }, []);
+
+  const handleEnd = useCallback(() => {
+    engineRef.current?.stop();
+  }, []);
+
+  const handleClose = useCallback(() => {
+    void closeOverlay();
+  }, []);
+
+  const handleBackToWork = useCallback(() => {
+    engineRef.current?.resumeWork();
   }, []);
 
   useTimerHotkeys({
@@ -179,8 +183,11 @@ function App() {
             paused={paused}
             onPause={handlePause}
             onResume={handleResume}
+            onEnd={handleEnd}
+            onClose={handleClose}
           />
         ) : null}
+        {phase === "break" ? <BackToWork onBackToWork={handleBackToWork} /> : null}
         {phase === "breakComplete" && artwork ? (
           <BreakComplete artwork={artwork} onStartNext={handleStart} />
         ) : null}

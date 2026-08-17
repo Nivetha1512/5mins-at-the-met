@@ -24,7 +24,7 @@ const MOCK_ARTWORK: Artwork = {
  */
 export function UiDemo() {
   const [config, setConfig] = useState<TimerConfig>(DEFAULT_TIMER_CONFIG);
-  const [remainingMs, setRemainingMs] = useState(25 * 60 * 1000);
+  const [remainingMs, setRemainingMs] = useState(DEFAULT_TIMER_CONFIG.studySeconds * 1000);
   const [paused, setPaused] = useState(false);
   const [skipped, setSkipped] = useState(false);
 
@@ -43,17 +43,21 @@ export function UiDemo() {
             config={config}
             onChange={(next) => {
               setConfig(next);
-              setRemainingMs(next.studyMinutes * 60 * 1000);
+              setRemainingMs(next.studySeconds * 1000);
             }}
-            onStart={() => {
-              setPaused(false);
-              setRemainingMs(config.studyMinutes * 60 * 1000);
-            }}
+            onStart={() => setPaused(false)}
           />
         </div>
         <div className="ui-demo__panel">
-          <p className="ui-demo__label">StudyChip (~220×80)</p>
-          <StudyChip remainingMs={remainingMs} paused={paused} onPause={onPause} onResume={onResume} />
+          <p className="ui-demo__label">StudyChip (~300×80)</p>
+          <StudyChip
+            remainingMs={remainingMs}
+            paused={paused}
+            onPause={onPause}
+            onResume={onResume}
+            onEnd={() => setRemainingMs(0)}
+            onClose={() => undefined}
+          />
           {skipped ? <p className="ui-demo__label">Esc skip received</p> : null}
         </div>
       </div>

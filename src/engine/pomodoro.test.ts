@@ -3,6 +3,7 @@ import { DISSOLVE_MS } from "../shared";
 import type { EngineCallbacks, PhaseChangePayload, TickPayload } from "../shared";
 import {
   CONFIG_STORAGE_KEY,
+  DEFAULT_TIMER_CONFIG,
   PomodoroEngine,
   type EngineClock,
   type StorageLike,
@@ -79,7 +80,7 @@ function createMemoryStorage(initial: Record<string, string> = {}): StorageLike 
 }
 
 function createEngine(
-  config: { studyMinutes?: number; breakMinutes?: number },
+  config: { studySeconds?: number; breakSeconds?: number },
   extras: {
     clock?: EngineClock;
     storage?: StorageLike | null;
@@ -110,7 +111,7 @@ describe("PomodoroEngine", () => {
   it("runs study → break → breakComplete → dissolving (30s) → studying", () => {
     const { clock, advance } = createFakeClock();
     const { engine, phases } = createEngine(
-      { studyMinutes: 1, breakMinutes: 1 },
+      { studySeconds: 60, breakSeconds: 60 },
       { clock, nextArtworkId: "met-123" },
     );
 
@@ -158,7 +159,7 @@ describe("PomodoroEngine", () => {
 
   it("pause/resume does not skip time incorrectly", () => {
     const { clock, advance } = createFakeClock();
-    const { engine, phases } = createEngine({ studyMinutes: 1, breakMinutes: 1 }, { clock });
+    const { engine, phases } = createEngine({ studySeconds: 60, breakSeconds: 60 }, { clock });
 
     engine.start();
     advance(20_000);
@@ -190,7 +191,7 @@ describe("PomodoroEngine", () => {
 
   it("skip jumps to the next phase in the chain", () => {
     const { clock, advance } = createFakeClock();
-    const { engine, phases } = createEngine({ studyMinutes: 25, breakMinutes: 5 }, { clock });
+    const { engine, phases } = createEngine({ studySeconds: 25 * 60, breakSeconds: 5 * 60 }, { clock });
 
     engine.start();
     advance(1_000);
@@ -218,9 +219,86 @@ describe("PomodoroEngine", () => {
     ]);
   });
 
+  it("stop returns to idle from a running study session", () => {
+    const { clock, advance } = createFakeClock();
+    const { engine, phases } = createEngine({ studySeconds: 25 * 60, breakSeconds: 5 * 60 }, { clock });
+
+    engine.start();
+    advance(5_000);
+    engine.pause();
+    engine.stop();
+
+    expect(engine.getPhase()).toBe("idle");
+    expect(engine.isPaused()).toBe(false);
+    expect(engine.snapshot().remainingMs).toBe(0);
+    expect(phases[phases.length - 1]).toMatchObject({ from: "studying", to: "idle" });
+
+    engine.stop();
+    expect(engine.getPhase()).toBe("idle");
+  });
+
+  it("resumeWork jumps from break back to studying", () => {
+    const { clock } = createFakeClock();
+    const { engine, phases } = createEngine({ studySeconds: 25 * 60, breakSeconds: 5 * 60 }, { clock });
+
+    engine.start();
+    engine.skip();
+    expect(engine.getPhase()).toBe("break");
+
+    engine.resumeWork();
+    expect(engine.getPhase()).toBe("studying");
+    expect(phases[phases.length - 1]).toMatchObject({ from: "break", to: "studying" });
+
+    engine.resumeWork();
+    expect(engine.getPhase()).toBe("studying");
+  });
+
+  it("resumeWork jumps from break to studying and skips the rest of the break", () => {
+    const { clock, advance } = createFakeClock();
+    const { engine, phases } = createEngine(
+      { studySeconds: 25 * 60, breakSeconds: 5 * 60 },
+      { clock, nextArtworkId: "met-123" },
+    );
+
+    engine.start();
+    engine.skip();
+    expect(engine.getPhase()).toBe("break");
+    advance(1_000);
+
+    engine.resumeWork();
+    expect(engine.getPhase()).toBe("studying");
+    expect(engine.isPaused()).toBe(false);
+    expect(engine.snapshot().totalMs).toBe(25 * 60_000);
+    expect(phases[phases.length - 1]).toMatchObject({ from: "break", to: "studying" });
+    expect(phases.map((p) => `${p.from}->${p.to}`)).not.toContain("break->breakComplete");
+  });
+
+  it("resumeWork from breakComplete and dissolving enters studying; no-op in idle", () => {
+    const { clock } = createFakeClock();
+    const { engine, phases } = createEngine({ studySeconds: 60, breakSeconds: 60 }, { clock });
+
+    engine.resumeWork();
+    expect(engine.getPhase()).toBe("idle");
+    expect(phases).toEqual([]);
+
+    engine.start();
+    engine.skip(); // break
+    engine.skip(); // breakComplete
+    engine.resumeWork();
+    expect(engine.getPhase()).toBe("studying");
+    expect(phases[phases.length - 1]).toMatchObject({ from: "breakComplete", to: "studying" });
+
+    engine.skip(); // break
+    engine.skip(); // breakComplete
+    engine.skip(); // dissolving
+    engine.resumeWork();
+    expect(engine.getPhase()).toBe("studying");
+    expect(phases[phases.length - 1]).toMatchObject({ from: "dissolving", to: "studying" });
+  });
+
   it("start from breakComplete begins dissolving", () => {
     const { clock } = createFakeClock();
-    const { engine } = createEngine({ studyMinutes: 1, breakMinutes: 1 }, { clock });
+    const { engine } = createEngine({ studySeconds: 60, breakSeconds: 60 }, { clock });
 
     engine.start();
     engine.skip(); // break
@@ -230,11 +308,11 @@ describe("PomodoroEngine", () => {
     expect(engine.snapshot().totalMs).toBe(DISSOLVE_MS);
   });
 
-  it("uses custom study and break minutes", () => {
+  it("uses custom study and break durations", () => {
     const { clock, advance } = createFakeClock();
-    const { engine } = createEngine({ studyMinutes: 2, breakMinutes: 3 }, { clock });
+    const { engine } = createEngine({ studySeconds: 2 * 60, breakSeconds: 3 * 60 }, { clock });
 
-    expect(engine.getConfig()).toEqual({ studyMinutes: 2, breakMinutes: 3 });
+    expect(engine.getConfig()).toEqual({ studySeconds: 120, breakSeconds: 180 });
 
     engine.start();
     expect(engine.snapshot().totalMs).toBe(2 * 60_000);
@@ -253,25 +331,87 @@ describe("PomodoroEngine", () => {
     expect(engine.getPhase()).toBe("breakComplete");
   });
 
+  it("honors sub-minute durations exactly", () => {
+    const { clock, advance } = createFakeClock();
+    const { engine } = createEngine(
+      { studySeconds: 30, breakSeconds: 90 },
+      { clock, tickIntervalMs: 1_000 },
+    );
+
+    engine.start();
+    expect(engine.snapshot().totalMs).toBe(30_000);
+
+    advance(29_999);
+    expect(engine.getPhase()).toBe("studying");
+    expect(engine.snapshot().remainingMs).toBe(1);
+
+    advance(1);
+    expect(engine.getPhase()).toBe("break");
+    expect(engine.snapshot().totalMs).toBe(90_000);
+
+    advance(90_000);
+    expect(engine.getPhase()).toBe("breakComplete");
+    engine.dispose();
+  });
+
+  it("defaults to 25 minutes study and 5 minutes break", () => {
+    expect(DEFAULT_TIMER_CONFIG).toEqual({ studySeconds: 1_500, breakSeconds: 300 });
+
+    const { clock } = createFakeClock();
+    const { engine } = createEngine({}, { clock });
+    engine.start();
+    expect(engine.snapshot().totalMs).toBe(25 * 60_000);
+    engine.dispose();
+  });
+
   it("persists last config to injectable storage", () => {
     const storage = createMemoryStorage();
     const { clock } = createFakeClock();
-    const first = createEngine({ studyMinutes: 40, breakMinutes: 8 }, { clock, storage });
+    const first = createEngine({ studySeconds: 40 * 60, breakSeconds: 8 * 60 }, { clock, storage });
     expect(JSON.parse(storage.getItem(CONFIG_STORAGE_KEY) ?? "{}")).toEqual({
-      studyMinutes: 40,
-      breakMinutes: 8,
+      studySeconds: 2_400,
+      breakSeconds: 480,
     });
     first.engine.dispose();
 
     const second = createEngine({}, { clock, storage });
-    expect(second.engine.getConfig()).toEqual({ studyMinutes: 40, breakMinutes: 8 });
+    expect(second.engine.getConfig()).toEqual({ studySeconds: 2_400, breakSeconds: 480 });
     second.engine.dispose();
+  });
+
+  it("migrates legacy minute-based persisted config", () => {
+    const storage = createMemoryStorage({
+      [CONFIG_STORAGE_KEY]: JSON.stringify({ studyMinutes: 45, breakMinutes: 7 }),
+    });
+    const { clock, advance } = createFakeClock();
+    const { engine } = createEngine({}, { clock, storage });
+
+    expect(engine.getConfig()).toEqual({ studySeconds: 45 * 60, breakSeconds: 7 * 60 });
+
+    engine.start();
+    expect(engine.snapshot().totalMs).toBe(45 * 60_000);
+
+    advance(45 * 60_000);
+    expect(engine.getPhase()).toBe("break");
+    expect(engine.snapshot().totalMs).toBe(7 * 60_000);
+    engine.dispose();
+  });
+
+  it("ignores unusable persisted config and falls back to defaults", () => {
+    const storage = createMemoryStorage({
+      [CONFIG_STORAGE_KEY]: JSON.stringify({ studyMinutes: 0, breakSeconds: "nope" }),
+    });
+    const { clock } = createFakeClock();
+    const { engine } = createEngine({}, { clock, storage });
+
+    expect(engine.getConfig()).toEqual(DEFAULT_TIMER_CONFIG);
+    engine.dispose();
   });
 
   it("survives missing localStorage in Node", () => {
     expect(() => {
       const engine = new PomodoroEngine(
-        { studyMinutes: 25, breakMinutes: 5 },
+        { studySeconds: 25 * 60, breakSeconds: 5 * 60 },
         { onTick: () => {}, onPhaseChange: () => {} },
       );
       engine.dispose();
