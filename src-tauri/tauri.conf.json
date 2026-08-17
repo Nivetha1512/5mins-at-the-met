@@ -14,8 +14,8 @@
       {
         "label": "main",
         "title": "MoMA Pomodoro",
-        "width": 220,
-        "height": 80,
+        "width": 420,
+        "height": 380,
         "decorations": false,
         "alwaysOnTop": true,
         "resizable": false,
