@@ -4,7 +4,7 @@
   line-height: 24px;
   font-weight: 400;
   color: #f6f6f6;
-  background-color: #1a1a1a;
+  background-color: transparent;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -17,20 +17,59 @@ body,
   margin: 0;
   width: 100%;
   height: 100%;
+  background: transparent;
 }
 
 .app {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  position: relative;
+  box-sizing: border-box;
   width: 100%;
   height: 100%;
   user-select: none;
 }
 
-.app h1 {
-  margin: 0;
-  font-size: 1rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
+.app--idle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #161412;
+}
+
+.app--compact {
+  overflow: hidden;
+  background: transparent;
+}
+
+.app--stage {
+  background: #0b0b0b;
+}
+
+.app__canvas {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.app__canvas--hidden {
+  visibility: hidden;
+}
+
+.app__ui {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
+
+.app--idle .app__ui {
+  width: auto;
+  height: auto;
+}
+
+.app--compact .app__ui {
+  width: 300px;
+  height: 80px;
 }

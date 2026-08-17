@@ -1,15 +1,32 @@
-/** A paint dab. `x`/`y`/`radius` are normalized to the source image (0–1). */
+/** A brush-pen dab. Positions and sizes are normalized to the source image (0–1). */
 export type Stroke = {
   x: number;
   y: number;
   color: string;
+  /** Characteristic size (kept for dissolve / older callers). */
   radius: number;
+  /** Path length along the brush; 2–5× `width`. */
+  length: number;
+  /** Peak thickness of the tapered stroke. */
+  width: number;
+  angle: number;
+  alpha: number;
+  /** Perpendicular bulge of the path, as a fraction of length. */
+  curve: number;
+  /** Second perpendicular offset (S-wobble), as a fraction of length. */
+  wobble: number;
+  /** 0–1: where the stroke is thickest (pressure peak). */
+  pressure: number;
+  /** −1 darker / +1 lighter overlapping edge pass. */
+  edge: number;
 };
 
 export type StrokeSet = {
   strokes: Stroke[];
   /** Source image width / height, for cover-fitting on the canvas. */
   aspect: number;
+  /** Bundled source painting; painter reveals this as construct finishes. */
+  image: HTMLImageElement;
 };
 
 const SAMPLE_LONG_EDGE = 280;
@@ -44,8 +61,8 @@ export function loadImage(src: string): Promise<HTMLImageElement> {
 }
 
 /**
- * Sample a bundled painting into ordered dabs: large color blocks first, detail last.
- * Results are cached per `imagePath`.
+ * Sample a bundled painting into ordered brush-pen strokes: field first
+ * (center → out), then edge / high-frequency detail. Cached per `imagePath`.
  */
 export function extractStrokes(imagePath: string): Promise<StrokeSet> {
   const cached = strokeCache.get(imagePath);
@@ -80,10 +97,10 @@ async function buildStrokes(imagePath: string): Promise<StrokeSet> {
   const rand = mulberry32(hashString(imagePath));
   const minDim = Math.min(sampleW, sampleH);
   const coarseColor = new Float32Array(sampleW * sampleH * 3);
-  const strokes: Stroke[] = [];
+  const field: Stroke[] = [];
+  const detail: Stroke[] = [];
 
   for (const layer of LAYERS) {
-    const layerStrokes: Stroke[] = [];
     for (let cy = layer.step / 2; cy < sampleH; cy += layer.step) {
       for (let cx = layer.step / 2; cx < sampleW; cx += layer.step) {
         const cellX0 = Math.max(0, Math.floor(cx - layer.step / 2));
@@ -106,24 +123,62 @@ async function buildStrokes(imagePath: string): Promise<StrokeSet> {
         const x = clamp01((cx + jx) / sampleW);
         const y = clamp01((cy + jy) / sampleH);
         const radius = ((layer.step * layer.radiusScale) / minDim) * (0.9 + rand() * 0.2);
+        const width = radius * (0.52 + rand() * 0.28);
+        const length = width * (layer.edges ? 2.5 + rand() * 2.2 : 2.15 + rand() * 2.55);
+        const orient = localOrientation(pixels, sampleW, sampleH, cx, cy);
+        const radial = Math.atan2(y - 0.5, x - 0.5);
+        const angle =
+          orient.mag > 18
+            ? orient.angle + (rand() - 0.5) * 0.28
+            : radial + (rand() - 0.5) * 0.55;
 
-        layerStrokes.push({
+        const stroke: Stroke = {
           x,
           y,
           color: toHex(r, g, b),
           radius,
-        });
+          length,
+          width,
+          angle,
+          alpha: layer.edges ? 0.48 + rand() * 0.32 : 0.55 + rand() * 0.3,
+          curve: (rand() - 0.5) * 0.34,
+          wobble: (rand() - 0.5) * 0.26,
+          pressure: 0.32 + rand() * 0.36,
+          edge: rand() < 0.5 ? -1 : 1,
+        };
+
+        if (layer.edges) {
+          detail.push(stroke);
+        } else {
+          field.push(stroke);
+        }
 
         if (!layer.edges) {
           stampCoarse(coarseColor, sampleW, sampleH, cx, cy, layer.step, r, g, b);
         }
       }
     }
-    shuffleInPlace(layerStrokes, rand);
-    strokes.push(...layerStrokes);
   }
 
-  return { strokes, aspect: img.width / img.height };
+  sortOutward(field, rand);
+  sortOutward(detail, rand);
+
+  return { strokes: [...field, ...detail], aspect: img.width / img.height, image: img };
+}
+
+/** Center-out order with a little angular / noise variation so the fan is not a perfect ring. */
+function sortOutward(strokes: Stroke[], rand: () => number): void {
+  const keyed = strokes.map((stroke) => {
+    const dx = stroke.x - 0.5;
+    const dy = stroke.y - 0.5;
+    const dist = Math.hypot(dx, dy);
+    const ang = Math.atan2(dy, dx);
+    const swirl = 0.05 * Math.sin(ang * 3 + rand() * Math.PI);
+    const noise = (rand() - 0.5) * 0.07;
+    return { stroke, key: dist + swirl + noise };
+  });
+  keyed.sort((a, b) => a.key - b.key);
+  strokes.splice(0, strokes.length, ...keyed.map((item) => item.stroke));
 }
 
 function averageCell(
@@ -211,6 +266,31 @@ function localContrast(
   return maxDiff;
 }
 
+function localOrientation(
+  data: Uint8ClampedArray,
+  width: number,
+  height: number,
+  cx: number,
+  cy: number,
+): { angle: number; mag: number } {
+  const x = clamp(Math.round(cx), 1, width - 2);
+  const y = clamp(Math.round(cy), 1, height - 2);
+  const tl = luma(data, width, x - 1, y - 1);
+  const tc = luma(data, width, x, y - 1);
+  const tr = luma(data, width, x + 1, y - 1);
+  const ml = luma(data, width, x - 1, y);
+  const mr = luma(data, width, x + 1, y);
+  const bl = luma(data, width, x - 1, y + 1);
+  const bc = luma(data, width, x, y + 1);
+  const br = luma(data, width, x + 1, y + 1);
+  const gx = -tl + tr - 2 * ml + 2 * mr - bl + br;
+  const gy = -tl - 2 * tc - tr + bl + 2 * bc + br;
+  return {
+    angle: Math.atan2(gy, gx) + Math.PI / 2,
+    mag: Math.hypot(gx, gy),
+  };
+}
+
 function luma(data: Uint8ClampedArray, width: number, x: number, y: number): number {
   const i = (y * width + x) * 4;
   return 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
@@ -257,13 +337,4 @@ function mulberry32(seed: number): () => number {
     t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
-}
-
-function shuffleInPlace<T>(items: T[], rand: () => number): void {
-  for (let i = items.length - 1; i > 0; i--) {
-    const j = Math.floor(rand() * (i + 1));
-    const tmp = items[i];
-    items[i] = items[j];
-    items[j] = tmp;
-  }
 }

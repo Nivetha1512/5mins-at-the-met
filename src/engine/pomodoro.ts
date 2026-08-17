@@ -7,13 +7,14 @@ import type {
 } from "../shared";
 
 export const DEFAULT_TIMER_CONFIG: TimerConfig = {
-  studyMinutes: 25,
-  breakMinutes: 5,
+  studySeconds: 25 * 60,
+  breakSeconds: 5 * 60,
 };
 
 export const CONFIG_STORAGE_KEY = "moma-pomodoro:timer-config";
 
-const MS_PER_MINUTE = 60_000;
+const MS_PER_SECOND = 1_000;
+const SECONDS_PER_MINUTE = 60;
 const DEFAULT_TICK_INTERVAL_MS = 1_000;
 
 export type StorageLike = {
@@ -75,8 +76,28 @@ function isPositiveFinite(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value) && value > 0;
 }
 
-function pickMinutes(value: number | undefined, fallback: number): number {
+function pickSeconds(value: number | undefined, fallback: number): number {
   return isPositiveFinite(value) ? value : fallback;
+}
+
+/**
+ * Reads a duration in seconds, falling back to the pre-seconds `*Minutes` key so
+ * configs persisted by older builds keep working.
+ */
+function readSeconds(
+  record: Record<string, unknown>,
+  secondsKey: string,
+  minutesKey: string,
+): number | undefined {
+  const seconds = record[secondsKey];
+  if (isPositiveFinite(seconds)) {
+    return seconds;
+  }
+  const minutes = record[minutesKey];
+  if (isPositiveFinite(minutes)) {
+    return minutes * SECONDS_PER_MINUTE;
+  }
+  return undefined;
 }
 
 function loadStoredConfig(storage: StorageLike | null): Partial<TimerConfig> {
@@ -94,11 +115,13 @@ function loadStoredConfig(storage: StorageLike | null): Partial<TimerConfig> {
     }
     const record = parsed as Record<string, unknown>;
     const out: Partial<TimerConfig> = {};
-    if (isPositiveFinite(record.studyMinutes)) {
-      out.studyMinutes = record.studyMinutes;
+    const studySeconds = readSeconds(record, "studySeconds", "studyMinutes");
+    if (studySeconds !== undefined) {
+      out.studySeconds = studySeconds;
     }
-    if (isPositiveFinite(record.breakMinutes)) {
-      out.breakMinutes = record.breakMinutes;
+    const breakSeconds = readSeconds(record, "breakSeconds", "breakMinutes");
+    if (breakSeconds !== undefined) {
+      out.breakSeconds = breakSeconds;
     }
     return out;
   } catch {
@@ -136,8 +159,8 @@ function nextPhase(from: PomodoroPhase): PomodoroPhase {
   }
 }
 
-function minutesToMs(minutes: number): number {
-  return Math.round(minutes * MS_PER_MINUTE);
+function secondsToMs(seconds: number): number {
+  return Math.round(seconds * MS_PER_SECOND);
 }
 
 /**
@@ -173,13 +196,13 @@ export class PomodoroEngine {
 
     const stored = loadStoredConfig(this.storage);
     this.config = {
-      studyMinutes: pickMinutes(
-        config.studyMinutes,
-        pickMinutes(stored.studyMinutes, DEFAULT_TIMER_CONFIG.studyMinutes),
+      studySeconds: pickSeconds(
+        config.studySeconds,
+        pickSeconds(stored.studySeconds, DEFAULT_TIMER_CONFIG.studySeconds),
       ),
-      breakMinutes: pickMinutes(
-        config.breakMinutes,
-        pickMinutes(stored.breakMinutes, DEFAULT_TIMER_CONFIG.breakMinutes),
+      breakSeconds: pickSeconds(
+        config.breakSeconds,
+        pickSeconds(stored.breakSeconds, DEFAULT_TIMER_CONFIG.breakSeconds),
       ),
     };
     saveConfig(this.storage, this.config);
@@ -216,6 +239,25 @@ export class PomodoroEngine {
     this.enter(nextPhase(this.phase));
   }
 
+  /**
+   * Abort a break (or its aftermath) and resume studying.
+   * No-op in idle or while already studying. Does not follow the skip() chain.
+   */
+  resumeWork(): void {
+    if (this.phase === "idle" || this.phase === "studying") {
+      return;
+    }
+    this.enter("studying");
+  }
+
+  /** Stop the session and return to idle. No-op if already idle. */
+  stop(): void {
+    if (this.phase === "idle") {
+      return;
+    }
+    this.enter("idle");
+  }
+
   getPhase(): PomodoroPhase {
     return this.phase;
   }
@@ -230,8 +272,8 @@ export class PomodoroEngine {
 
   setConfig(config: Partial<TimerConfig>): void {
     this.config = {
-      studyMinutes: pickMinutes(config.studyMinutes, this.config.studyMinutes),
-      breakMinutes: pickMinutes(config.breakMinutes, this.config.breakMinutes),
+      studySeconds: pickSeconds(config.studySeconds, this.config.studySeconds),
+      breakSeconds: pickSeconds(config.breakSeconds, this.config.breakSeconds),
     };
     saveConfig(this.storage, this.config);
   }
@@ -267,9 +309,9 @@ export class PomodoroEngine {
   private durationFor(phase: PomodoroPhase): number {
     switch (phase) {
       case "studying":
-        return minutesToMs(this.config.studyMinutes);
+        return secondsToMs(this.config.studySeconds);
       case "break":
-        return minutesToMs(this.config.breakMinutes);
+        return secondsToMs(this.config.breakSeconds);
       case "dissolving":
         return DISSOLVE_MS;
       default:

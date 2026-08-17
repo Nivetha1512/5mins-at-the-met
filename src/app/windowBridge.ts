@@ -11,10 +11,10 @@ import {
 /** Idle settings vs study chip vs break overlay vs click-through dissolve. */
 export type WindowMode = "idle" | "compact" | "fullscreen" | "dissolve";
 
-export const COMPACT_WIDTH = 220;
+export const COMPACT_WIDTH = 300;
 export const COMPACT_HEIGHT = 80;
 
-/** Settings panel — large enough for study/break fields; not the 220×80 chip. */
+/** Settings panel — large enough for study/break fields; not the compact chip. */
 export const IDLE_WIDTH = 420;
 export const IDLE_HEIGHT = 380;
 
@@ -35,7 +35,7 @@ export function isTauri(): boolean {
  * Switch the overlay chrome.
  *
  * - `idle` — ~420×380 settings, frameless, always-on-top, clicks on, centered
- * - `compact` — ~220×80 study chip, frameless, always-on-top, top-right
+ * - `compact` — ~300×80 study chip, frameless, always-on-top, top-right
  * - `fullscreen` — cover the monitor so break UI / Start next session is clickable
  * - `dissolve` — keep covering the monitor, `ignoreCursorEvents` so clicks pass through
  *
@@ -49,6 +49,15 @@ export async function setWindowMode(mode: WindowMode): Promise<void> {
     () => undefined,
   );
   return next;
+}
+
+/** Quit the overlay. Falls back to `window.close()` outside Tauri. */
+export async function closeOverlay(): Promise<void> {
+  if (!isTauri()) {
+    window.close();
+    return;
+  }
+  await getCurrentWindow().close();
 }
 
 async function applyWindowMode(mode: WindowMode): Promise<void> {
@@ -83,7 +92,7 @@ async function applyIdle(win: TauriWindow): Promise<void> {
   try {
     await win.center();
   } catch {
-    await placeTopRight(win);
+    await placeCenter(win, IDLE_WIDTH, IDLE_HEIGHT);
   }
 }
 
@@ -151,6 +160,23 @@ async function placeTopRight(win: TauriWindow): Promise<void> {
     new LogicalPosition(
       workPos.x + workSize.width - COMPACT_WIDTH - COMPACT_MARGIN,
       workPos.y + COMPACT_MARGIN,
+    ),
+  );
+}
+
+async function placeCenter(win: TauriWindow, width: number, height: number): Promise<void> {
+  const monitor = await resolveMonitor();
+  if (!monitor) {
+    return;
+  }
+  const scale = monitor.scaleFactor || 1;
+  const work = monitor.workArea;
+  const workPos = toLogicalPoint(work.position, scale);
+  const workSize = toLogicalExtent(work.size, scale);
+  await win.setPosition(
+    new LogicalPosition(
+      workPos.x + Math.max(0, (workSize.width - width) / 2),
+      workPos.y + Math.max(0, (workSize.height - height) / 2),
     ),
   );
 }

@@ -1,0 +1,57 @@
+---
+description: Core conventions for the Met Pomodoro desktop overlay (Tauri + React)
+alwaysApply: true
+---
+
+# Met Pomodoro — project rules
+
+macOS desktop overlay pomodoro timer. Breaks **paint** a bundled Met Open Access (CC0) artwork; the next study session dissolves it over 30s (click-through).
+
+Repo name is historical (`moma-pomodoro`). **Art source is The Met, not MoMA.** No runtime image fetch — everything lives in `public/artworks/`.
+
+## Stack
+
+- **Tauri 2** — native window (always-on-top, frameless, fullscreen, click-through)
+- **React + TypeScript + Vite** — UI
+- **Canvas 2D** — construct / dissolve painting in `src/art/painter.ts`
+- **Pure TS engine** — `src/engine/pomodoro.ts` + Vitest
+
+## Module boundaries
+
+| Path | Role |
+|---|---|
+| `src/shared/` | Frozen contract (`types.ts`, `events.ts`). Change only with care. |
+| `src/app/App.tsx` | Composition root — wires engine, window, painter, UI. |
+| `src/app/windowBridge.ts` | Window modes: `idle`, `compact`, `fullscreen`, `dissolve`. |
+| `src/engine/` | Pomodoro state machine. No imports from Tauri, window, or canvas. |
+| `src/art/` | Catalog, stroke extraction, canvas painter. |
+| `src/ui/` | Settings, study chip, break-complete, back-to-work. |
+| `src-tauri/` | Rust shell and Tauri config. |
+
+Specialists must not import each other's internals. Public types flow through `src/shared/`.
+
+## Shared contract (do not drift)
+
+- Phases: `idle | studying | break | breakComplete | dissolving`
+- `TimerConfig`: `{ studySeconds, breakSeconds }` (whole seconds)
+- `DISSOLVE_MS = 30_000`
+- Engine callbacks: **`onTick` and `onPhaseChange` only**
+- `Artwork.description` is required — a fun personal-history fact shown on break-complete
+
+## Painting behavior
+
+- Construct runs over the **break duration**; each stroke should **reveal** the real bundled image (mask + wet paint that dries), not swap strokes for a full-image pop at the end.
+- Break-complete shows the faithful source image plus title, artist, year, description.
+- Dissolve fades the completed painting during the first 30s of the next study session.
+
+## Art catalog
+
+- CC0 / Public Domain Open Access only ([Met Open Access](https://metmuseum.github.io/))
+- JSON catalog: `public/artworks/artworks.json` matching `Artwork` in `src/shared/types.ts`
+- Credit: `"The Metropolitan Museum of Art, Open Access (CC0)"` plus collection credit
+
+## When editing
+
+- Match existing naming, types, and file layout. Minimal diffs.
+- Run `node ./node_modules/typescript/bin/tsc --noEmit` and `npm test` before finishing.
+- Do not commit unless the user asks.

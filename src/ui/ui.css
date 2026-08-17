@@ -12,7 +12,7 @@
 
 .ui-settings__fields {
   display: flex;
-  gap: 2.25rem;
+  gap: 1.75rem;
 }
 
 .ui-settings__field {
@@ -22,7 +22,8 @@
   gap: 0.45rem;
 }
 
-.ui-settings__field label {
+.ui-settings__field label,
+.ui-settings__label {
   font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 0.68rem;
   font-weight: 500;
@@ -31,8 +32,20 @@
   color: #9e988c;
 }
 
+.ui-settings__duration {
+  display: flex;
+  align-items: baseline;
+  gap: 0.15rem;
+}
+
+.ui-settings__colon {
+  font-size: 1.6rem;
+  line-height: 1.2;
+  color: #7a7468;
+}
+
 .ui-settings__field input {
-  width: 4.75rem;
+  width: 2.9rem;
   background: transparent;
   border: none;
   border-bottom: 1px solid #5c574e;
@@ -96,13 +109,13 @@
 
 .ui-chip {
   box-sizing: border-box;
-  width: 220px;
+  width: 300px;
   height: 80px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
-  padding: 0 1.1rem 0 1.25rem;
+  padding: 0 0.85rem 0 1.1rem;
   background: rgba(10, 9, 8, 0.78);
   color: #f0ece4;
   border-radius: 2px;
@@ -125,16 +138,22 @@
   color: #c4bfb4;
 }
 
+.ui-chip__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
 .ui-chip__toggle {
   appearance: none;
   background: none;
   border: none;
-  padding: 0.35rem 0.15rem;
+  padding: 0.35rem 0.2rem;
   color: #b8b2a6;
   font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
-  font-size: 0.62rem;
+  font-size: 0.58rem;
   font-weight: 500;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   cursor: pointer;
   white-space: nowrap;
@@ -147,6 +166,37 @@
 .ui-chip__toggle:focus-visible {
   outline: 1px solid #c9c3b6;
   outline-offset: 2px;
+}
+
+.ui-back-to-work {
+  position: absolute;
+  top: 1.25rem;
+  left: 1.25rem;
+  z-index: 2;
+  pointer-events: auto;
+  appearance: none;
+  background: rgba(10, 9, 8, 0.72);
+  border: 1px solid #8a8478;
+  color: #e8e4dc;
+  padding: 0.5rem 0.95rem;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ui-back-to-work:hover {
+  border-color: #d4cfc3;
+  color: #f7f3eb;
+}
+
+.ui-back-to-work:focus-visible {
+  outline: 1px solid #d4cfc3;
+  outline-offset: 3px;
 }
 
 .ui-break {
