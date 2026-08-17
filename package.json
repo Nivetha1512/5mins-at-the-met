@@ -10,7 +10,8 @@
     "tauri": "tauri",
     "test": "vitest run",
     "fetch-artworks": "node scripts/fetch-met-artworks.mjs",
-    "fetch-artworks:catalog": "node scripts/fetch-met-artworks.mjs --skip-images"
+    "fetch-artworks:catalog": "node scripts/fetch-met-artworks.mjs --skip-images",
+    "generate-icon": "sips -c 1427 1427 public/artworks/irises.jpg --out /tmp/met-icon-crop.jpg && sips -s format png -z 1024 1024 /tmp/met-icon-crop.jpg --out src-tauri/app-icon.png && tauri icon src-tauri/app-icon.png -o src-tauri/icons && cp src-tauri/icons/128x128.png public/dock-icon.png"
   },
   "dependencies": {
     "react": "^19.1.0",

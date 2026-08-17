@@ -168,6 +168,37 @@
   outline-offset: 2px;
 }
 
+.ui-exit {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 3;
+  pointer-events: auto;
+  appearance: none;
+  background: rgba(10, 9, 8, 0.72);
+  border: 1px solid #8a8478;
+  color: #e8e4dc;
+  padding: 0.45rem 0.8rem;
+  font-family: Inter, "Helvetica Neue", Helvetica, Arial, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  cursor: pointer;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.ui-exit:hover {
+  border-color: #d4cfc3;
+  color: #f7f3eb;
+}
+
+.ui-exit:focus-visible {
+  outline: 1px solid #d4cfc3;
+  outline-offset: 3px;
+}
+
 .ui-back-to-work {
   position: absolute;
   top: 1.25rem;

@@ -12,12 +12,13 @@ import {
   BackToWork,
   BreakComplete,
   BreakTimer,
+  ExitButton,
   Settings,
   StudyChip,
   useTimerHotkeys,
 } from "../ui";
 import "./App.css";
-import { closeOverlay, setWindowMode, type WindowMode } from "./windowBridge";
+import { closeOverlay, isTauri, setWindowMode, startWindowDrag, type WindowMode } from "./windowBridge";
 
 const CANVAS_PHASES: ReadonlySet<PomodoroPhase> = new Set([
   "break",
@@ -81,6 +82,19 @@ function drivePainter(
   }
 }
 
+async function syncWindowIcon(): Promise<void> {
+  try {
+    const { Image } = await import("@tauri-apps/api/image");
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const response = await fetch("/dock-icon.png");
+    if (!response.ok) return;
+    const icon = await Image.fromBytes(new Uint8Array(await response.arrayBuffer()));
+    await getCurrentWindow().setIcon(icon);
+  } catch {
+    // Non-fatal: bundled Rust icon still applies after rebuild.
+  }
+}
+
 function App() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<PomodoroEngine | null>(null);
@@ -137,6 +151,10 @@ function App() {
     void setWindowMode("idle");
     painter.clear();
 
+    if (isTauri()) {
+      void syncWindowIcon();
+    }
+
     return () => {
       engine.dispose();
       engineRef.current = null;
@@ -191,6 +209,14 @@ function App() {
     engineRef.current?.start();
   }
 
+  function handleIdleDragMouseDown(event: React.MouseEvent<HTMLDivElement>) {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    void startWindowDrag();
+  }
+
   const showCanvas = CANVAS_PHASES.has(phase);
   const appClass =
     phase === "idle"
@@ -206,7 +232,16 @@ function App() {
         className={showCanvas ? "app__canvas" : "app__canvas app__canvas--hidden"}
         aria-hidden={!showCanvas}
       />
+      {phase === "idle" ? (
+        <div
+          className="app__drag-layer"
+          data-tauri-drag-region
+          aria-hidden="true"
+          onMouseDown={handleIdleDragMouseDown}
+        />
+      ) : null}
       <div className="app__ui">
+        {phase === "idle" ? <ExitButton onExit={handleClose} /> : null}
         {phase === "idle" ? (
           <Settings config={config} onChange={handleConfigChange} onStart={handleStart} />
         ) : null}
