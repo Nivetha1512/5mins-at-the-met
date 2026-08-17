@@ -1,4 +1,4 @@
-# MoMA Pomodoro
+# 5 Minutes at the Met Pomodoro
 
 macOS always-on-top overlay: a compact study timer, then a fullscreen painting constructed over the break. When you start the next session, the painting dissolves for 30 seconds (click-through) and the chip returns.
 
