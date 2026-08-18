@@ -1,6 +1,6 @@
 # 5 Minutes at the Met Pomodoro
 
-macOS always-on-top overlay: a compact study timer, then a fullscreen painting constructed over the break. When you start the next session, the painting dissolves for 30 seconds (click-through) and the chip returns.
+macOS always-on-top overlay: a compact study timer, then a fullscreen painting constructed over the break. When you start the next session, the chip returns and the canvas clears.
 
 The app name is historical. **Paintings come from [The Met Open Access](https://metmuseum.github.io/) (CC0), bundled locally** — metadata from [metmuseum/openaccess](https://github.com/metmuseum/openaccess), images downloaded at build time via The Met Collection API. Not from MoMA, and not fetched at runtime.
 

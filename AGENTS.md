@@ -1,6 +1,6 @@
 # Agent ownership
 
-macOS overlay pomodoro. Breaks construct a bundled [Met Open Access](https://metmuseum.github.io/) painting; the next study session starts with a 30s click-through dissolve.
+macOS overlay pomodoro. Breaks construct a bundled [Met Open Access](https://metmuseum.github.io/) painting; the next study session returns to the compact chip.
 
 App name is historical (`moma-pomodoro`). **Art source is The Met, not MoMA.** Only CC0 Open Access works, bundled locally. No runtime network fetch.
 
@@ -10,7 +10,7 @@ App name is historical (`moma-pomodoro`). **Art source is The Met, not MoMA.** O
 |---|---|---|
 | `src/shared/` | Agent 0 | Frozen contract (`types.ts`, `events.ts`). Do not change without orchestrator. |
 | `src/app/App.tsx` | Agent 0 only | Composition root. Wire phase changes to window + painter in Wave 2. |
-| `src-tauri/` | Agent 1 | Window modes: compact / fullscreen / click-through dissolve. |
+| `src-tauri/` | Agent 1 | Window modes: compact / fullscreen. |
 | `src/app/windowBridge.ts` | Agent 1 | Frontend API for window mode. Agent 0 imports it from `App.tsx`. |
 | `src/engine/` | Agent 2 | Pomodoro state machine + unit tests. |
 | `src/art/` | Agent 3 | Catalog loader, stroke extract, canvas painter. |
@@ -49,16 +49,15 @@ Credit line example: `"The Metropolitan Museum of Art, Open Access (CC0)"` plus 
 
 | Agent | Isolated proof |
 |---|---|
-| 1 | Colored-rectangle window that can switch compact ↔ fullscreen ↔ ignore-cursor |
-| 2 | `pomodoro.test.ts` covering study → break → breakComplete → dissolving (30s) → studying |
-| 3 | Demo page/loop: construct then 30s dissolve on a bundled Met painting |
+| 1 | Colored-rectangle window that can switch compact ↔ fullscreen |
+| 2 | `pomodoro.test.ts` covering study → break → breakComplete → studying |
+| 3 | Demo page/loop: construct on a bundled Met painting |
 | 4 | Settings + StudyChip + BreakComplete (title/artist/year/description) against mock engine types |
 
 ## Shared contract (do not drift)
 
-- `PomodoroPhase`: `idle \| studying \| break \| breakComplete \| dissolving`
+- `PomodoroPhase`: `idle \| studying \| break \| breakComplete`
 - `TimerConfig`: `{ studySeconds, breakSeconds }` (whole seconds, so sub-minute phases are representable; legacy persisted `{ studyMinutes, breakMinutes }` is migrated on load)
-- `DISSOLVE_MS = 30_000`
 - `Artwork`: `{ id, title, artist, year, imagePath, credit, description, metObjectId? }`
-- `PainterCommand`: `{ type: "construct" \| "dissolve" \| "clear", artworkId, durationMs }`
+- `PainterCommand`: `{ type: "construct" \| "clear", artworkId, durationMs }`
 - Engine: `onTick`, `onPhaseChange` only

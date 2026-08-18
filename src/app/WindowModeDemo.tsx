@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   COMPACT_HEIGHT,
   COMPACT_WIDTH,
@@ -13,68 +13,32 @@ const MODE_FILL: Record<WindowMode, string> = {
   idle: "#2a2620",
   compact: "#c45c26",
   fullscreen: "#1d4e89",
-  dissolve: "#5b2a86",
 };
 
 const MODE_LABEL: Record<WindowMode, string> = {
   idle: "idle · settings",
   compact: "compact · study chip",
   fullscreen: "fullscreen · break (clicks on)",
-  dissolve: "dissolve · click-through",
 };
 
-const MODE_KEYS: WindowMode[] = ["idle", "compact", "fullscreen", "dissolve"];
-
-const DISSOLVE_DEMO_MS = 5_000;
+const MODE_KEYS: WindowMode[] = ["idle", "compact", "fullscreen"];
 
 /**
  * Isolated proof for Agent 1. Do not mount from App.tsx.
- * Compact / fullscreen / dissolve swap both the fill color and Tauri chrome.
- * Dissolve auto-returns to compact after 5s because click-through blocks the buttons.
+ * Compact / fullscreen swap both the fill color and Tauri chrome.
  */
 export function WindowModeDemo() {
   const [mode, setMode] = useState<WindowMode>("compact");
   const [tauri, setTauri] = useState(false);
-  const [dissolveLeftMs, setDissolveLeftMs] = useState(0);
-  const dissolveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dissolveTick = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     setTauri(isTauri());
     void setWindowMode("compact");
-    return () => clearDissolveTimers();
   }, []);
 
-  function clearDissolveTimers() {
-    if (dissolveTimer.current) {
-      clearTimeout(dissolveTimer.current);
-      dissolveTimer.current = null;
-    }
-    if (dissolveTick.current) {
-      clearInterval(dissolveTick.current);
-      dissolveTick.current = null;
-    }
-    setDissolveLeftMs(0);
-  }
-
   async function choose(next: WindowMode) {
-    clearDissolveTimers();
     setMode(next);
     await setWindowMode(next);
-
-    if (next !== "dissolve") {
-      return;
-    }
-
-    setDissolveLeftMs(DISSOLVE_DEMO_MS);
-    dissolveTick.current = setInterval(() => {
-      setDissolveLeftMs((left) => Math.max(0, left - 250));
-    }, 250);
-    dissolveTimer.current = setTimeout(() => {
-      clearDissolveTimers();
-      setMode("compact");
-      void setWindowMode("compact");
-    }, DISSOLVE_DEMO_MS);
   }
 
   return (
@@ -113,13 +77,7 @@ export function WindowModeDemo() {
               cursor: "pointer",
             }}
           >
-            {key === "idle"
-              ? "Idle"
-              : key === "compact"
-                ? "Compact"
-                : key === "fullscreen"
-                  ? "Fullscreen"
-                  : "Dissolve"}
+            {key === "idle" ? "Idle" : key === "compact" ? "Compact" : "Fullscreen"}
           </button>
         ))}
       </div>
@@ -129,9 +87,6 @@ export function WindowModeDemo() {
         </p>
         <p style={{ margin: "4px 0 0", fontSize: mode === "compact" ? 10 : 13, opacity: 0.85 }}>
           {tauri ? "Tauri window APIs active" : "Browser only — chrome will not resize"}
-          {mode === "dissolve" && dissolveLeftMs > 0
-            ? ` · auto compact in ${(dissolveLeftMs / 1000).toFixed(1)}s`
-            : null}
         </p>
       </div>
     </div>

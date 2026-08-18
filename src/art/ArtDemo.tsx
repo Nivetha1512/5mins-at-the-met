@@ -1,14 +1,15 @@
 import { useEffect, useRef, useState } from "react";
-import { DISSOLVE_MS, type Artwork } from "../shared/types";
+import { type Artwork } from "../shared/types";
 import { nextArtwork } from "./catalog";
 import { ArtPainter } from "./painter";
 
 const CONSTRUCT_MS = 10_000;
+const DISSOLVE_MS = 30_000;
 
 type Phase = "construct" | "dissolve";
 
 /**
- * Isolated construct → 30s dissolve loop. Not mounted in App.tsx (Agent 0).
+ * Isolated construct → dissolve preview loop. Not mounted in App.tsx (Agent 0).
  * Preview: temporarily render `<ArtDemo />` from `src/main.tsx`, or see README.
  */
 export function ArtDemo() {

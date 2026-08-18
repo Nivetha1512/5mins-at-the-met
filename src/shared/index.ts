@@ -4,7 +4,6 @@ export type {
   Artwork,
   PainterCommand,
 } from "./types";
-export { DISSOLVE_MS } from "./types";
 
 export type {
   TickPayload,

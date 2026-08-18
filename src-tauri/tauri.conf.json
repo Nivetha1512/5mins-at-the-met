@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "MoMA Pomodoro",
+  "productName": "Minutes at the Met",
   "version": "0.1.0",
   "identifier": "com.moma.pomodoro",
   "build": {
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "MoMA Pomodoro",
+        "title": "Minutes at the Met",
         "width": 420,
         "height": 380,
         "center": false,

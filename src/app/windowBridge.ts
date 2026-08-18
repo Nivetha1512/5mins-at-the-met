@@ -8,8 +8,8 @@ import {
   type Monitor,
 } from "@tauri-apps/api/window";
 
-/** Idle settings vs study chip vs break overlay vs click-through dissolve. */
-export type WindowMode = "idle" | "compact" | "fullscreen" | "dissolve";
+/** Idle settings vs study chip vs break overlay. */
+export type WindowMode = "idle" | "compact" | "fullscreen";
 
 export const COMPACT_WIDTH = 300;
 export const COMPACT_HEIGHT = 80;
@@ -43,7 +43,6 @@ export function isTauri(): boolean {
  * - `idle` — ~420×380 settings, frameless, always-on-top, draggable, remembers position
  * - `compact` — ~300×80 study chip, frameless, always-on-top, top-right
  * - `fullscreen` — cover the monitor so break UI / Start next session is clickable
- * - `dissolve` — keep covering the monitor, `ignoreCursorEvents` so clicks pass through
  *
  * No-ops in a non-Tauri browser so Agent 0 can still call this from `App.tsx`.
  */
@@ -93,10 +92,7 @@ async function applyWindowMode(mode: WindowMode): Promise<void> {
       await applyCompact(win);
       break;
     case "fullscreen":
-      await applyCover(win, false);
-      break;
-    case "dissolve":
-      await applyCover(win, true);
+      await applyCover(win);
       break;
   }
   currentMode = mode;
@@ -135,12 +131,12 @@ async function applyCompact(win: TauriWindow): Promise<void> {
 
 /**
  * Cover the monitor without a native macOS Space when possible.
- * Native `setFullscreen(true)` would steal a desktop and break click-through dissolve.
+ * Native `setFullscreen(true)` would steal a desktop.
  */
-async function applyCover(win: TauriWindow, ignoreCursor: boolean): Promise<void> {
+async function applyCover(win: TauriWindow): Promise<void> {
+  await win.setIgnoreCursorEvents(false);
   await win.setAlwaysOnTop(true);
   await win.setDecorations(false);
-  // Avoid native Space-fullscreen so dissolve can click through to other apps.
   await win.setFullscreen(false);
   try {
     await win.setSimpleFullscreen(true);
@@ -152,8 +148,6 @@ async function applyCover(win: TauriWindow, ignoreCursor: boolean): Promise<void
   } catch {
     // Simple-fullscreen may already own the size; covering is best-effort.
   }
-
-  await win.setIgnoreCursorEvents(ignoreCursor);
 }
 
 async function exitCover(win: TauriWindow): Promise<void> {

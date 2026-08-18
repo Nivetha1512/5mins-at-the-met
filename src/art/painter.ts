@@ -1,6 +1,9 @@
-import { DISSOLVE_MS, type PainterCommand } from "../shared/types";
+import { type PainterCommand } from "../shared/types";
 import { getArtwork } from "./catalog";
 import { extractStrokes, type Stroke } from "./strokes";
+
+/** Default fade duration for isolated ArtDemo preview only. */
+const DEMO_DISSOLVE_MS = 30_000;
 
 type DestRect = { x: number; y: number; w: number; h: number };
 
@@ -86,9 +89,9 @@ export class ArtPainter {
   }
 
   /**
-   * Fade the completed painting (image over residual dabs). Defaults to `DISSOLVE_MS` (30s).
+   * Fade the completed painting (image over residual dabs). ArtDemo preview only.
    */
-  async dissolve(durationMs: number = DISSOLVE_MS): Promise<void> {
+  async dissolve(durationMs: number = DEMO_DISSOLVE_MS): Promise<void> {
     const runId = ++this.runId;
     this.wantsCompleted = false;
     this.scatter = this.makeScatter();
@@ -132,9 +135,6 @@ export class ArtPainter {
     switch (command.type) {
       case "construct":
         await this.construct(command.artworkId, command.durationMs);
-        return;
-      case "dissolve":
-        await this.dissolve(command.durationMs);
         return;
       case "clear":
         this.clear();

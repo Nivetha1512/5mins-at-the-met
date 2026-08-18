@@ -15,7 +15,7 @@ import { ArtDemo } from "./art";
 ReactDOM.createRoot(document.getElementById("root")!).render(<ArtDemo />);
 ```
 
-Or have Agent 0 wire `?demo=art` later. The demo loops **construct (10s)** then **dissolve (30s / `DISSOLVE_MS`)** and cycles to the next painting.
+Or have Agent 0 wire `?demo=art` later. The demo loops **construct (10s)** then an optional **dissolve preview (30s)** and cycles to the next painting.
 
 ```bash
 npm run dev
@@ -34,7 +34,6 @@ npm run dev
 ```ts
 const painter = new ArtPainter(canvas);
 await painter.construct(artworkId, durationMs); // progress = elapsed / duration
-await painter.dissolve();                       // default DISSOLVE_MS (30s)
 painter.clear();
 await painter.handleCommand({ type: "construct", artworkId, durationMs });
 ```

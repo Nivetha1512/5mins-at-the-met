@@ -5,15 +5,15 @@ alwaysApply: true
 
 # Met Pomodoro — project rules
 
-macOS desktop overlay pomodoro timer. Breaks **paint** a bundled Met Open Access (CC0) artwork; the next study session dissolves it over 30s (click-through).
+macOS desktop overlay pomodoro timer. Breaks **paint** a bundled Met Open Access (CC0) artwork; the next study session returns to the compact chip.
 
 Repo name is historical (`moma-pomodoro`). **Art source is The Met, not MoMA.** No runtime image fetch — everything lives in `public/artworks/`.
 
 ## Stack
 
-- **Tauri 2** — native window (always-on-top, frameless, fullscreen, click-through)
+- **Tauri 2** — native window (always-on-top, frameless, fullscreen)
 - **React + TypeScript + Vite** — UI
-- **Canvas 2D** — construct / dissolve painting in `src/art/painter.ts`
+- **Canvas 2D** — construct painting in `src/art/painter.ts`
 - **Pure TS engine** — `src/engine/pomodoro.ts` + Vitest
 
 ## Module boundaries
@@ -22,7 +22,7 @@ Repo name is historical (`moma-pomodoro`). **Art source is The Met, not MoMA.** 
 |---|---|
 | `src/shared/` | Frozen contract (`types.ts`, `events.ts`). Change only with care. |
 | `src/app/App.tsx` | Composition root — wires engine, window, painter, UI. |
-| `src/app/windowBridge.ts` | Window modes: `idle`, `compact`, `fullscreen`, `dissolve`. |
+| `src/app/windowBridge.ts` | Window modes: `idle`, `compact`, `fullscreen`. |
 | `src/engine/` | Pomodoro state machine. No imports from Tauri, window, or canvas. |
 | `src/art/` | Catalog, stroke extraction, canvas painter. |
 | `src/ui/` | Settings, study chip, break-complete, back-to-work. |
@@ -32,9 +32,8 @@ Specialists must not import each other's internals. Public types flow through `s
 
 ## Shared contract (do not drift)
 
-- Phases: `idle | studying | break | breakComplete | dissolving`
+- Phases: `idle | studying | break | breakComplete`
 - `TimerConfig`: `{ studySeconds, breakSeconds }` (whole seconds)
-- `DISSOLVE_MS = 30_000`
 - Engine callbacks: **`onTick` and `onPhaseChange` only**
 - `Artwork.description` is required — a fun personal-history fact shown on break-complete
 
@@ -42,7 +41,6 @@ Specialists must not import each other's internals. Public types flow through `s
 
 - Construct runs over the **break duration**; each stroke should **reveal** the real bundled image (mask + wet paint that dries), not swap strokes for a full-image pop at the end.
 - Break-complete shows the faithful source image plus title, artist, year, description.
-- Dissolve fades the completed painting during the first 30s of the next study session.
 
 ## Art catalog
 
