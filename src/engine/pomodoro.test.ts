@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { DISSOLVE_MS } from "../shared";
 import type { EngineCallbacks, PhaseChangePayload, TickPayload } from "../shared";
 import {
   CONFIG_STORAGE_KEY,
@@ -195,18 +194,14 @@ describe("PomodoroEngine", () => {
     expect(engine.getPhase()).toBe("breakComplete");
 
     engine.skip();
-    expect(engine.getPhase()).toBe("dissolving");
-    expect(engine.snapshot().totalMs).toBe(DISSOLVE_MS);
-
-    engine.skip();
     expect(engine.getPhase()).toBe("studying");
+    expect(engine.snapshot().totalMs).toBe(25 * 60_000);
 
     expect(phases.map((p) => `${p.from}->${p.to}`)).toEqual([
       "idle->studying",
       "studying->break",
       "break->breakComplete",
-      "breakComplete->dissolving",
-      "dissolving->studying",
+      "breakComplete->studying",
     ]);
   });
 
@@ -264,7 +259,7 @@ describe("PomodoroEngine", () => {
     expect(phases.map((p) => `${p.from}->${p.to}`)).not.toContain("break->breakComplete");
   });
 
-  it("resumeWork from breakComplete and dissolving enters studying; no-op in idle", () => {
+  it("resumeWork from breakComplete enters studying; no-op in idle", () => {
     const { clock } = createFakeClock();
     const { engine, phases } = createEngine({ studySeconds: 60, breakSeconds: 60 }, { clock });
 
@@ -278,16 +273,9 @@ describe("PomodoroEngine", () => {
     engine.resumeWork();
     expect(engine.getPhase()).toBe("studying");
     expect(phases[phases.length - 1]).toMatchObject({ from: "breakComplete", to: "studying" });
-
-    engine.skip(); // break
-    engine.skip(); // breakComplete
-    engine.skip(); // dissolving
-    engine.resumeWork();
-    expect(engine.getPhase()).toBe("studying");
-    expect(phases[phases.length - 1]).toMatchObject({ from: "dissolving", to: "studying" });
   });
 
-  it("start from breakComplete enters studying (skips dissolve)", () => {
+  it("start from breakComplete enters studying", () => {
     const { clock } = createFakeClock();
     const { engine } = createEngine({ studySeconds: 60, breakSeconds: 60 }, { clock });
 

@@ -4,17 +4,13 @@ export type PomodoroPhase =
   | "idle"
   | "studying"
   | "break"
-  | "breakComplete"
-  | "dissolving";
+  | "breakComplete";
 
 /** Phase lengths in whole seconds so sub-minute durations are representable. */
 export type TimerConfig = {
   studySeconds: number;
   breakSeconds: number;
 };
-
-/** Fixed dissolve duration while the next study session begins (click-through). */
-export const DISSOLVE_MS = 30_000;
 
 /**
  * A bundled Met Open Access (CC0) painting.
@@ -37,7 +33,7 @@ export type Artwork = {
 };
 
 export type PainterCommand = {
-  type: "construct" | "dissolve" | "clear";
+  type: "construct" | "clear";
   artworkId: string;
   durationMs: number;
 };

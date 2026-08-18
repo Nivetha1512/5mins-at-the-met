@@ -23,7 +23,6 @@ import { closeOverlay, isTauri, setWindowMode, startWindowDrag, type WindowMode 
 const CANVAS_PHASES: ReadonlySet<PomodoroPhase> = new Set([
   "break",
   "breakComplete",
-  "dissolving",
 ]);
 
 function windowModeFor(phase: PomodoroPhase): WindowMode {
@@ -35,8 +34,6 @@ function windowModeFor(phase: PomodoroPhase): WindowMode {
     case "break":
     case "breakComplete":
       return "fullscreen";
-    case "dissolving":
-      return "dissolve";
   }
 }
 
@@ -75,9 +72,6 @@ function drivePainter(
       return;
     case "breakComplete":
       painter.hold();
-      return;
-    case "dissolving":
-      void painter.dissolve();
       return;
   }
 }

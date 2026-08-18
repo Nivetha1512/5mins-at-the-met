@@ -3,7 +3,7 @@ export type Stroke = {
   x: number;
   y: number;
   color: string;
-  /** Characteristic size (kept for dissolve / older callers). */
+  /** Characteristic size (kept for older callers). */
   radius: number;
   /** Path length along the brush; 2–5× `width`. */
   length: number;

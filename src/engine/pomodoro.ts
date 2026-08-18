@@ -1,4 +1,3 @@
-import { DISSOLVE_MS } from "../shared";
 import type {
   EngineCallbacks,
   PomodoroPhase,
@@ -31,8 +30,7 @@ export type EngineClock = {
 export type PomodoroEngineOptions = {
   /**
    * Included on phase changes once known. A function is invoked when entering
-   * `break` so the host can pick the next painting; the same id is reused for
-   * `dissolving`.
+   * `break` so the host can pick the next painting.
    */
   nextArtworkId?: string | (() => string | undefined);
   clock?: EngineClock;
@@ -141,7 +139,7 @@ function saveConfig(storage: StorageLike | null, config: TimerConfig): void {
 }
 
 function isTimedPhase(phase: PomodoroPhase): boolean {
-  return phase === "studying" || phase === "break" || phase === "dissolving";
+  return phase === "studying" || phase === "break";
 }
 
 function nextPhase(from: PomodoroPhase): PomodoroPhase {
@@ -153,8 +151,6 @@ function nextPhase(from: PomodoroPhase): PomodoroPhase {
     case "break":
       return "breakComplete";
     case "breakComplete":
-      return "dissolving";
-    case "dissolving":
       return "studying";
   }
 }
@@ -214,7 +210,6 @@ export class PomodoroEngine {
       return;
     }
     if (this.phase === "breakComplete") {
-      // Skip the dissolve overlay — go straight to the compact study chip.
       this.enter("studying");
     }
   }
@@ -317,8 +312,6 @@ export class PomodoroEngine {
         return secondsToMs(this.config.studySeconds);
       case "break":
         return secondsToMs(this.config.breakSeconds);
-      case "dissolving":
-        return DISSOLVE_MS;
       default:
         return 0;
     }
