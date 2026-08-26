@@ -61,3 +61,13 @@ Credit line example: `"The Metropolitan Museum of Art, Open Access (CC0)"` plus 
 - `Artwork`: `{ id, title, artist, year, imagePath, credit, description, metObjectId? }`
 - `PainterCommand`: `{ type: "construct" \| "clear", artworkId, durationMs }`
 - Engine: `onTick`, `onPhaseChange` only
+
+## Cursor Cloud specific instructions
+
+This is a **macOS Tauri overlay app**, but the Cloud VM is **headless Linux**. Develop and test against the **Vite frontend only** — the whole product (engine, canvas painter, artwork catalog, settings, break flow) runs in a plain browser because every native call in `src/app/windowBridge.ts` is guarded by `isTauri()` and no-ops outside Tauri.
+
+- Do **not** run `npm run tauri dev` / `npm run tauri build` here — that path is macOS-oriented (uses `setSimpleFullscreen`, `ActivationPolicy`) and needs a display + webkit. It is not the way to test on this VM.
+- Standard commands live in `package.json`: `npm run dev` (Vite on port **1420**, `strictPort` — must be free), `npm test` (Vitest), `npm run build` (`tsc && vite build`). There is **no ESLint**; the "lint" gate is `node ./node_modules/typescript/bin/tsc --noEmit` (per workspace rules, run it plus `npm test` before finishing).
+- Artwork images are bundled in `public/artworks/` and served by Vite; there is **no runtime network fetch**. `npm run fetch-artworks*` is maintenance-only.
+- To exercise the study → break → break-complete flow quickly, set short **Study/Break** durations in the Settings panel (fields accept whole seconds, e.g. `0:02` / `0:12`); the painting constructs over the break duration.
+- Manual GUI testing/screen recording: the VM has an idle screensaver (a rotating white 3D cube on black) that will overwrite recordings during pauses. Disable it for the session with `DISPLAY=:1 xset s off; xset s 0 0` (and/or keep the mouse moving) before recording.
